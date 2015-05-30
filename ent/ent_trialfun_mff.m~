@@ -185,63 +185,62 @@ for i = 1:length(ft_event)
                 % within the threshold, replace the current sample time
                 % with that of the DIN
                 if cfg.eventinfo.usePhotodiodeDIN      
-%                     
-%                     if i~=length(ft_event) && ... %is it not the last event?
-%                             strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && ...%is next event a DIN?
-%                             abs(ft_event(i+1).sample - this_sample) <= photodiodeDIN_toleranceSamp %is it in the tolerance range?
-%                         
-%                         this_sample = ft_event(i+1).sample;
-%                         offsetSamp = offsetSampAA;
-%                         
-%                     else
-%                         warning('No DIN found for %s event %i; using standard TCP offset of %ims', ft_event(i).value, i, cfg.eventinfo.offsetMSTCP);
-%                         offsetSamp = offsetSampAA + offsetSampTCP;
-%                     end   
+                    
+                    if i~=length(ft_event) && ... %is it not the last event?
+                            strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && ...%is next event a DIN?
+                            abs(ft_event(i+1).sample - this_sample) <= photodiodeDIN_toleranceSamp %is it in the tolerance range?
+                        
+                        this_sample = ft_event(i+1).sample;
+                        offsetSamp = offsetSampAA;
+                        
+                    else
+                        warning('No DIN found for %s event %i; using standard offset of %ims', ft_event(i).value, i, cfg.eventinfo.offsetMSTCP);
+                        offsetSamp = offsetSampAA + offsetSampTCP;
+                    end   
                     
                      %matt's DIN detection... seems to be grabbing dins on
                      %either side? this doesn't make sense to me, DINS
                      %should always follow the TCP event
                      
-                    if strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str)
-                        % if there is a DIN before and after the stim, pick
-                        % the closer one
-                        preDiff = (ft_event(i-1).sample - this_sample);
-                        postDiff = (ft_event(i+1).sample - this_sample);
-                        
-                        if preDiff < 0 && abs(preDiff) <= photodiodeDIN_toleranceSamp
-                            preFlag = true;
-                        else
-                            preFlag = false;
-                        end
-                        if postDiff <= photodiodeDIN_toleranceSamp
-                            postFlag = true;
-                        else
-                            postFlag = false;
-                        end
-                        
-                        if preFlag && ~postFlag
-                            % only the pre-DIN makes sense
-                            this_sample = ft_event(i-1).sample;
-                        elseif ~preFlag && postFlag
-                            % only the post-DIN makes sense
-                            this_sample = ft_event(i+1).sample;
-                        elseif preFlag && postFlag
-                            % choose the smaller one
-                            if abs(preDiff) < abs(postDiff)
-                                this_sample = ft_event(i-1).sample;
-                            elseif abs(preDiff) > abs(postDiff)
-                                this_sample = ft_event(i+1).sample;
-                            elseif abs(preDiff) == abs(postDiff)
-                                keyboard
-                            end
-                        end
-                    elseif strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && ~strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str) && (ft_event(i+1).sample - this_sample) <= photodiodeDIN_toleranceSamp
-                        this_sample = ft_event(i+1).sample;
-                    elseif strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str) && (ft_event(i-1).sample - this_sample) < 0 && abs(ft_event(i-1).sample - this_sample) <= photodiodeDIN_toleranceSamp
-                        % apparently the ethernet tags can be delayed
-                        % enough that the DIN shows up first
-                        this_sample = ft_event(i-1).sample;
-                    end
+%                     if strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str)
+%                         % if there is a DIN before and after the stim, pick
+%                         % the closer one
+%                         preDiff = (ft_event(i-1).sample - this_sample);
+%                         postDiff = (ft_event(i+1).sample - this_sample);
+%                         
+%                         if preDiff < 0 && abs(preDiff) <= photodiodeDIN_toleranceSamp
+%                             preFlag = true;
+%                         else
+%                             preFlag = false;
+%                         end
+%                         if postDiff <= photodiodeDIN_toleranceSamp
+%                             postFlag = true;
+%                         else
+%                             postFlag = false;
+%                         end
+%                         
+%                         if preFlag && ~postFlag
+%                             % only the pre-DIN makes sense
+%                             this_sample = ft_event(i-1).sample;
+%                         elseif ~preFlag && postFlag
+%                             % only the post-DIN makes sense
+%                             this_sample = ft_event(i+1).sample;
+%                         elseif preFlag && postFlag
+%                             % choose the smaller one
+%                             if abs(preDiff) < abs(postDiff)
+%                                 this_sample = ft_event(i-1).sample;
+%                             elseif abs(preDiff) > abs(postDiff)
+%                                 this_sample = ft_event(i+1).sample;
+%                             elseif abs(preDiff) == abs(postDiff)
+%                                 keyboard
+%                             end
+%                         end
+%                     elseif strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && ~strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str) && (ft_event(i+1).sample - this_sample) <= photodiodeDIN_toleranceSamp
+%                         this_sample = ft_event(i+1).sample;
+%                     elseif strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str) && (ft_event(i-1).sample - this_sample) < 0 && abs(ft_event(i-1).sample - this_sample) <= photodiodeDIN_toleranceSamp
+%                         % apparently the ethernet tags can be delayed
+%                         % enough that the DIN shows up first
+%                         this_sample = ft_event(i-1).sample;
 
                 end
                 

@@ -56,7 +56,7 @@ dirs.dataDir = fullfile(exper.name,'EEG','Sessions','test',dirs.subDir);
 dirs.serverDir = fullfile(filesep,'Volumes','curranlab','Data');
 dirs.serverLocalDir = fullfile(filesep,'Volumes','RAID','curranlab','Data');
 dirs.dreamDir = fullfile(filesep,'data','projects','curranlab');
-dirs.localDir = fullfile(getenv('HOME'),'data');
+dirs.localDir = fullfile(getenv('HOME'),'Documents','Documents','boulder','Entrain_EEG','Analysis','data');
 
 % pick the right dirs.dataroot
 if isfield(dirs,'serverDir') && exist(dirs.serverDir,'dir')
@@ -86,7 +86,8 @@ ana.elec = ft_read_sens(files.elecfile,'fileformat',files.locsFormat);
 % raw data
 ana.segFxn = 'seg2ft';
 
-ana.offsetMS = 36;
+ana.offsetMS = 36; %due to anti-aliasing
+ana.offsetMSTCP = 0; %offset due to tcp delay (average based on timing tests)
 
 ana.continuous = 'yes';
 % ana.trialFxn = 'space_trialfun';
@@ -98,7 +99,7 @@ ana.useMetadata = true;
 ana.metadata.types = {'nsEvt'};
 ana.useExpInfo = 1;
 % ana.evtToleranceMS = 8; % 2 samples @ 250 Hz
-ana.usePhotodiodeDIN = 0;
+ana.usePhotodiodeDIN = 1;
 ana.photodiodeDIN_toleranceMS = 20;
 ana.photodiodeDIN_str = 'DIN ';
 if ana.useExpInfo
@@ -117,22 +118,8 @@ if ana.useExpInfo
   ana.trl_order.flckr20 = tmp;
 end
 
-% preprocess continuous data in these ways
-% ana.cfg_cont.lpfilter = 'yes';
-% ana.cfg_cont.lpfreq = 100;
-% ana.cfg_cont.hpfilter = 'yes';
-% ana.cfg_cont.hpfreq = 0.1;
-% ana.cfg_cont.hpfilttype = 'but';
-% ana.cfg_cont.hpfiltord = 4;
-% ana.cfg_cont.bsfilter = 'yes';
-% ana.cfg_cont.bsfreq = [59 61];
 
-
-%skip artificat detetion for now
-ana.artifact.type = {'none'};
-
-
-% process the data
+% process the data after segmentation?
 ana.ftFxn = 'ft_freqanalysis';
 % ftype is a string used in naming the saved files (data_FTYPE_EVENT.mat)
 ana.ftype = 'tfr';
@@ -152,6 +139,18 @@ cfg_proc.foi = 3:freqstep:50;
 cfg_proc.output = 'pow';
 
 
+
+% any preprocessing? (run after processing artifacts)
+cfg_pp = [];
+% average rereference
+cfg_pp.reref = 'yes';
+cfg_pp.refchannel = 'all';
+cfg_pp.implicitref = exper.refChan;
+% do a baseline correction
+cfg_pp.demean = 'yes';
+cfg_pp.baselinewindow = [-0.2 0];
+
+
 % preprocess continuous data in these ways
 ana.cfg_cont.lpfilter = 'yes';
 ana.cfg_cont.lpfreq = 100;
@@ -162,9 +161,9 @@ ana.cfg_cont.hpfiltord = 4;
 ana.cfg_cont.bsfilter = 'yes';
 ana.cfg_cont.bsfreq = [59 61];
 
-ana.artifact.continuousRepair = true;
-ana.artifact.continuousReject = true;
-ana.artifact.continuousICA = true;
+ana.artifact.continuousRepair = false;
+ana.artifact.continuousReject = false;
+ana.artifact.continuousICA = false;
 
 % artifact settings
 ana.artifact.reject = 'complete';
@@ -186,7 +185,7 @@ ana.artifact.fltpadding = 0;
 
 % set up for ftAuto after continuous ICA rejection
 ana.artifact.checkAllChan = true;
-ana.artifact.thresh = flase;
+ana.artifact.thresh = false;
 ana.artifact.threshmin = -100;
 ana.artifact.threshmax = 100;
 ana.artifact.threshrange = 150;
@@ -205,12 +204,10 @@ cfg_proc.keeptrials = 'yes';
 
 % set the save directories
 [dirs,files] = mm_ft_setSaveDirs(exper,ana,cfg_proc,dirs,files,'tfr');
-% [dirs,files] = mm_ft_setSaveDirs(exper,ana,cfg_proc,dirs,files,'tla');
 
 % create the raw and processed structs for each sub, ses, & event value
-% [exper] = create_ft_struct_multiSes(ana,cfg_pp,exper,dirs,files);
 [exper] = create_ft_struct(ana,cfg_pp,exper,dirs,files);
 
-%process_ft_data(ana,cfg_proc,exper,dirs,files,cfg_pp);
+process_ft_data(ana,cfg_proc,exper,dirs,files,cfg_pp);
 
 

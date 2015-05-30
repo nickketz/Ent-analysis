@@ -32,7 +32,7 @@ exper.eventValues = {'flckr0','flckr6','flckr10','flckr20'};
 exper.prepost = {[-1.0 2.0; -1.0 2.0; -1.0 2.0; -1.0 2.0]};
 
 exper.subjects = {
-    'Ent_102'
+    'Ent_100'
     };
 
 % The sessions that each subject ran; the strings in this cell are the
@@ -56,7 +56,7 @@ dirs.dataDir = fullfile(exper.name,'EEG','Sessions','test',dirs.subDir);
 dirs.serverDir = fullfile(filesep,'Volumes','curranlab','Data');
 dirs.serverLocalDir = fullfile(filesep,'Volumes','RAID','curranlab','Data');
 dirs.dreamDir = fullfile(filesep,'data','projects','curranlab');
-dirs.localDir = fullfile(getenv('HOME'),'data');
+dirs.localDir = fullfile(getenv('HOME'),'Documents','Documents','boulder','Entrain_EEG','Analysis','data');
 
 % pick the right dirs.dataroot
 if isfield(dirs,'serverDir') && exist(dirs.serverDir,'dir')
@@ -86,7 +86,8 @@ ana.elec = ft_read_sens(files.elecfile,'fileformat',files.locsFormat);
 % raw data
 ana.segFxn = 'seg2ft';
 
-ana.offsetMS = 36;
+ana.offsetMS = 36; %due to anti-aliasing
+ana.offsetMSTCP = 0; %offset due to tcp delay (average based on timing tests)
 
 ana.continuous = 'yes';
 % ana.trialFxn = 'space_trialfun';
@@ -98,7 +99,7 @@ ana.useMetadata = true;
 ana.metadata.types = {'nsEvt'};
 ana.useExpInfo = 1;
 % ana.evtToleranceMS = 8; % 2 samples @ 250 Hz
-ana.usePhotodiodeDIN = 0;
+ana.usePhotodiodeDIN = 1;
 ana.photodiodeDIN_toleranceMS = 20;
 ana.photodiodeDIN_str = 'DIN ';
 if ana.useExpInfo
@@ -169,34 +170,33 @@ ana.artifact.reject = 'complete';
 ana.artifact.preArtBaseline = 'yes'; % yes=entire trial
 
 % set up for ftManual/ftAuto
-% ana.artifact.type = {'ftManual'};
-ana.artifact.type = {'ftAuto'};
-% ana.artifact.resumeManArtFT = false;
-ana.artifact.resumeManArtContinuous = false;
-ana.artifact.resumeICACompContinuous = false;
-% negative trlpadding: don't check that time (on both sides) for artifacts.
-% IMPORTANT: Not used for threshold artifacts. only use if segmenting a lot
-% of extra time around trial epochs. Otherwise set to zero.
-ana.artifact.trlpadding = 0;
+ana.artifact.type = {'none'};
+% ana.artifact.type = {'ftAuto'};
+% % ana.artifact.resumeManArtFT = false;
+% ana.artifact.resumeManArtContinuous = false;
+% ana.artifact.resumeICACompContinuous = false;
+% % negative trlpadding: don't check that time (on both sides) for artifacts.
+% % IMPORTANT: Not used for threshold artifacts. only use if segmenting a lot
+% % of extra time around trial epochs. Otherwise set to zero.
 % ana.artifact.trlpadding = 0;
-ana.artifact.artpadding = 0.1;
-ana.artifact.fltpadding = 0;
-
-% set up for ftAuto after continuous ICA rejection
-ana.artifact.checkAllChan = true;
-ana.artifact.thresh = false;
-ana.artifact.threshmin = -100;
-ana.artifact.threshmax = 100;
-ana.artifact.threshrange = 150;
-ana.artifact.basic_art = true;
-ana.artifact.basic_art_z = 30;
-ana.artifact.jump_art = true;
-ana.artifact.jump_art_z = 30;
-% eog_art is only used with ftAuto
-ana.artifact.eog_art = false;
-% ana.artifact.eog_art_z = 3.5;
-
-% single precision to save space
+% ana.artifact.artpadding = 0.1;
+% ana.artifact.fltpadding = 0;
+% 
+% % set up for ftAuto after continuous ICA rejection
+% ana.artifact.checkAllChan = true;
+% ana.artifact.thresh = true;
+% ana.artifact.threshmin = -100;
+% ana.artifact.threshmax = 100;
+% ana.artifact.threshrange = 150;
+% ana.artifact.basic_art = true;
+% ana.artifact.basic_art_z = 30;
+% ana.artifact.jump_art = true;
+% ana.artifact.jump_art_z = 30;
+% % eog_art is only used with ftAuto
+% ana.artifact.eog_art = false;
+% % ana.artifact.eog_art_z = 3.5;
+% 
+% % single precision to save space
 %cfg_pp.precision = 'single';
 
 cfg_proc.keeptrials = 'yes';
@@ -207,6 +207,6 @@ cfg_proc.keeptrials = 'yes';
 % create the raw and processed structs for each sub, ses, & event value
 [exper] = create_ft_struct(ana,cfg_pp,exper,dirs,files);
 
-process_ft_data(ana,cfg_proc,exper,dirs,files,cfg_pp);
+process_ft_data(ana,cfg_proc,exper,dirs);
 
 
