@@ -50,11 +50,11 @@ cfg_plot.type = strrep(strrep(cfg_plot.ftFxn,'ft_',''),'plotTFR','');
 
 % good default z-limits
 if ~isfield(cfg_ft,'zlim')
-  if strcmp(ft_findcfg(data.(exper.sesStr{sesNum}).(ana.eventValues{sesNum}{1}{1}).cfg,'baselinetype'),'absolute')
+  if strcmp(ft_findcfg(data.(exper.sesStr{sesNum}).(ana.eventValues{1}{1}).cfg,'baselinetype'),'absolute')
     cfg_ft.zlim = [-400 400];
-  elseif strcmp(ft_findcfg(data.(exper.sesStr{sesNum}).(ana.eventValues{sesNum}{1}{1}).cfg,'baselinetype'),'relative')
+  elseif strcmp(ft_findcfg(data.(exper.sesStr{sesNum}).(ana.eventValues{1}{1}).cfg,'baselinetype'),'relative')
     cfg_ft.zlim = [0 2.0];
-  elseif strcmp(ft_findcfg(data.(exper.sesStr{sesNum}).(ana.eventValues{sesNum}{1}{1}).cfg,'baselinetype'),'relchange')
+  elseif strcmp(ft_findcfg(data.(exper.sesStr{sesNum}).(ana.eventValues{1}{1}).cfg,'baselinetype'),'relchange')
     cfg_ft.zlim = [-1.0 1.0];
   end
 end

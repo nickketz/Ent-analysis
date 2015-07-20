@@ -32,7 +32,7 @@ exper.eventValues = {'flckr0','flckr6','flckr10','flckr20'};
 exper.prepost = {[-1.0 2.0; -1.0 2.0; -1.0 2.0; -1.0 2.0]};
 
 exper.subjects = {
-    'Ent_100'
+    'ENT_Pilot_1'
     };
 
 % The sessions that each subject ran; the strings in this cell are the
@@ -49,7 +49,7 @@ exper.sessions = {{'ses1'}};
 % directory where the data to read is located
 dirs.subDir = '';
 % dirs.dataDir = fullfile(exper.name,'EEG','Sessions','face_house_ratings','eppp',sprintf('%d_%d',exper.prepost(1)*1000,exper.prepost(2)*1000),dirs.subDir);
-dirs.behDir = fullfile(exper.name,'Behavioral','Sessions',dirs.subDir);
+dirs.behDir = fullfile(exper.name,'Behavioral','Sessions','test',dirs.subDir);
 % dirs.dataDir = fullfile(exper.name,'EEG','Sessions','ftpp',sprintf('%d_%d',exper.prepost(1)*1000,exper.prepost(2)*1000),dirs.subDir);
 dirs.dataDir = fullfile(exper.name,'EEG','Sessions','test',dirs.subDir);
 % Possible locations of the data files (dataroot)
@@ -99,7 +99,7 @@ ana.useMetadata = true;
 ana.metadata.types = {'nsEvt'};
 ana.useExpInfo = 1;
 % ana.evtToleranceMS = 8; % 2 samples @ 250 Hz
-ana.usePhotodiodeDIN = 1;
+ana.usePhotodiodeDIN = 0;
 ana.photodiodeDIN_toleranceMS = 20;
 ana.photodiodeDIN_str = 'DIN ';
 if ana.useExpInfo
@@ -122,7 +122,7 @@ end
 % process the data after segmentation?
 ana.ftFxn = 'ft_freqanalysis';
 % ftype is a string used in naming the saved files (data_FTYPE_EVENT.mat)
-ana.ftype = 'tfr';
+ana.ftype = 'pow';
 ana.overwrite.raw = 1;
 ana.overwrite.proc = 1;
 
@@ -170,43 +170,69 @@ ana.artifact.reject = 'complete';
 ana.artifact.preArtBaseline = 'yes'; % yes=entire trial
 
 % set up for ftManual/ftAuto
-ana.artifact.type = {'none'};
-% ana.artifact.type = {'ftAuto'};
-% % ana.artifact.resumeManArtFT = false;
-% ana.artifact.resumeManArtContinuous = false;
-% ana.artifact.resumeICACompContinuous = false;
-% % negative trlpadding: don't check that time (on both sides) for artifacts.
-% % IMPORTANT: Not used for threshold artifacts. only use if segmenting a lot
-% % of extra time around trial epochs. Otherwise set to zero.
-% ana.artifact.trlpadding = 0;
-% ana.artifact.artpadding = 0.1;
-% ana.artifact.fltpadding = 0;
-% 
-% % set up for ftAuto after continuous ICA rejection
-% ana.artifact.checkAllChan = true;
-% ana.artifact.thresh = true;
-% ana.artifact.threshmin = -100;
-% ana.artifact.threshmax = 100;
-% ana.artifact.threshrange = 150;
-% ana.artifact.basic_art = true;
-% ana.artifact.basic_art_z = 30;
-% ana.artifact.jump_art = true;
-% ana.artifact.jump_art_z = 30;
-% % eog_art is only used with ftAuto
-% ana.artifact.eog_art = false;
-% % ana.artifact.eog_art_z = 3.5;
-% 
-% % single precision to save space
-%cfg_pp.precision = 'single';
+%ana.artifact.type = {'none'};
+ana.artifact.type = {'ftAuto'};
+% ana.artifact.resumeManArtFT = false;
+ana.artifact.resumeManArtContinuous = false;
+ana.artifact.resumeICACompContinuous = false;
+% negative trlpadding: don't check that time (on both sides) for artifacts.
+% IMPORTANT: Not used for threshold artifacts. only use if segmenting a lot
+% of extra time around trial epochs. Otherwise set to zero.
+ana.artifact.trlpadding = 0;
+ana.artifact.artpadding = 0.1;
+ana.artifact.fltpadding = 0;
+
+% set up for ftAuto after continuous ICA rejection
+ana.artifact.checkAllChan = true;
+ana.artifact.thresh = true;
+ana.artifact.threshmin = -100;
+ana.artifact.threshmax = 100;
+ana.artifact.threshrange = 150;
+ana.artifact.basic_art = true;
+ana.artifact.basic_art_z = 30;
+ana.artifact.jump_art = true;
+ana.artifact.jump_art_z = 30;
+% eog_art is only used with ftAuto
+ana.artifact.eog_art = false;
+% ana.artifact.eog_art_z = 3.5;
+
+% single precision to save space
+cfg_pp.precision = 'single';
 
 cfg_proc.keeptrials = 'yes';
 
 % set the save directories
-[dirs,files] = mm_ft_setSaveDirs(exper,ana,cfg_proc,dirs,files,'tfr');
+[dirs,files] = mm_ft_setSaveDirs(exper,ana,cfg_proc,dirs,files,'pow');
 
 % create the raw and processed structs for each sub, ses, & event value
 [exper] = create_ft_struct(ana,cfg_pp,exper,dirs,files);
 
 process_ft_data(ana,cfg_proc,exper,dirs);
 
+
+%%
+% save the analysis details
+
+backup_orig_AD = true;
+% whether to sort by subject number
+sortBySubj = true;
+% whether to overwite existing subjects in the struct
+replaceOrig = true;
+
+% concatenate the additional ones onto the existing ones
+saveFile = fullfile(dirs.saveDirProc,'analysisDetails.mat');
+if ~exist(saveFile,'file')
+  fprintf('Saving analysis details: %s...',saveFile);
+  save(saveFile,'exper','ana','dirs','files','cfg_proc','cfg_pp');
+  fprintf('Done.\n');
+else
+  additional_AD_file = fullfile(dirs.saveDirProc,sprintf('analysisDetails%s.mat',sprintf(repmat('_%s',1,length(exper.subjects)),exper.subjects{:})));
+  fprintf('Temporarily saving new analysis details: %s...',additional_AD_file);
+  save(additional_AD_file,'exper','ana','dirs','files','cfg_proc','cfg_pp');
+  
+  [exper,ana,dirs,files,cfg_proc,cfg_pp] = mm_mergeAnalysisDetails(saveFile,additional_AD_file,backup_orig_AD,sortBySubj,replaceOrig);
+end
+
+%
+adFile = '/Users/nketz/Documents/Documents/boulder/Entrain_EEG/Analysis/data/ENT/EEG/Sessions/test/ft_data/flckr0_flckr6_flckr10_flckr20_eq0_art_ftAuto/tfr_wavelet_w4_pow_3_50/analysisDetails.mat';
 

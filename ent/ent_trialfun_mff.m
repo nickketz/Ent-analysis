@@ -99,9 +99,9 @@ ft_event = ft_event(ismember({ft_event.type},{cfg.trialdef.eventtype, 'DIN_1'}))
 tmp = {ft_event.value};
 ft_event = ft_event(ismember(tmp,triggers));
 
-hasDIN = sum(ismember({ft_event.value},cfg.eventinfo.photodiodeDIN_str))>0;
 
 if cfg.eventinfo.usePhotodiodeDIN
+    hasDIN = sum(ismember({ft_event.value},cfg.eventinfo.photodiodeDIN_str))>0;
     if hasDIN
         photodiodeDIN_toleranceMS = cfg.eventinfo.photodiodeDIN_toleranceMS;
         photodiodeDIN_toleranceSamp = ceil((photodiodeDIN_toleranceMS / 1000) * ft_hdr.Fs);
@@ -111,8 +111,8 @@ if cfg.eventinfo.usePhotodiodeDIN
 end
 
 offsetSampAA = ceil((cfg.eventinfo.offsetMS / 1000) * ft_hdr.Fs);
-if ~isfield(cfg.eventinfo, 'offsetMSTCP') error('missing standard offset incase of missing DIN'); end
-offsetSampTCP = ceil((cfg.eventinfo.offsetMSTCP / 1000) * ft_hdr.Fs);
+%if ~isfield(cfg.eventinfo, 'offsetMSTCP') error('missing standard offset incase of missing DIN'); end
+%offsetSampTCP = ceil((cfg.eventinfo.offsetMSTCP / 1000) * ft_hdr.Fs);
 
 
 
@@ -134,7 +134,8 @@ for i = 1:length(ft_event)
         
         switch ft_event(i).value
             case 'FLK2'
-                nKeys = length(ft_event(i).orig.keys);
+                nKeys = length(ft_event(i).orig.keys);                
+                defOffset = ceil((15/1000) * ft_hdr.Fs); %TCP offset if DIN triggers not used, determined by photodiode tests
                 
                 % set column types because Net Station evt files can vary
                 ns_evt_cols = {};
@@ -179,7 +180,8 @@ for i = 1:length(ft_event)
                 this_sample = ft_event(i).sample;
 
                 %set offset
-                offsetSamp = offsetSampAA + offsetSampTCP;
+                offsetSamp = offsetSampAA; %anti-aliasing offset
+%                offsetSamp = offsetSampAA + offsetSampTCP;
                 
                 % if we're using the photodiode DIN and we find one
                 % within the threshold, replace the current sample time
@@ -201,48 +203,57 @@ for i = 1:length(ft_event)
                      %matt's DIN detection... seems to be grabbing dins on
                      %either side? this doesn't make sense to me, DINS
                      %should always follow the TCP event
-                     
-                    if strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str)
-                        % if there is a DIN before and after the stim, pick
-                        % the closer one
-                        preDiff = (ft_event(i-1).sample - this_sample);
-                        postDiff = (ft_event(i+1).sample - this_sample);
-                        
-                        if preDiff < 0 && abs(preDiff) <= photodiodeDIN_toleranceSamp
-                            preFlag = true;
-                        else
-                            preFlag = false;
-                        end
-                        if postDiff <= photodiodeDIN_toleranceSamp
-                            postFlag = true;
-                        else
-                            postFlag = false;
-                        end
-                        
-                        if preFlag && ~postFlag
-                            % only the pre-DIN makes sense
-                            this_sample = ft_event(i-1).sample;
-                        elseif ~preFlag && postFlag
-                            % only the post-DIN makes sense
-                            this_sample = ft_event(i+1).sample;
-                        elseif preFlag && postFlag
-                            % choose the smaller one
-                            if abs(preDiff) < abs(postDiff)
-                                this_sample = ft_event(i-1).sample;
-                            elseif abs(preDiff) > abs(postDiff)
-                                this_sample = ft_event(i+1).sample;
-                            elseif abs(preDiff) == abs(postDiff)
-                                keyboard
-                            end
-                        end
-                    elseif strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && ~strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str) && (ft_event(i+1).sample - this_sample) <= photodiodeDIN_toleranceSamp
-                        this_sample = ft_event(i+1).sample;
-                    elseif strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str) && (ft_event(i-1).sample - this_sample) < 0 && abs(ft_event(i-1).sample - this_sample) <= photodiodeDIN_toleranceSamp
-                        % apparently the ethernet tags can be delayed
-                        % enough that the DIN shows up first
-                        this_sample = ft_event(i-1).sample;
-                    end
-
+                     try
+                         if strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str)
+                             
+                             % if there is a DIN before and after the stim, pick
+                             % the closer one
+                             preDiff = (ft_event(i-1).sample - this_sample);
+                             postDiff = (ft_event(i+1).sample - this_sample);
+                             
+                             if preDiff < 0 && abs(preDiff) <= photodiodeDIN_toleranceSamp
+                                 preFlag = true;
+                             else
+                                 preFlag = false;
+                             end
+                             if postDiff <= photodiodeDIN_toleranceSamp
+                                 postFlag = true;
+                             else
+                                 postFlag = false;
+                             end
+                             
+                             if preFlag && ~postFlag
+                                 % only the pre-DIN makes sense
+                                 this_sample = ft_event(i-1).sample;
+                             elseif ~preFlag && postFlag
+                                 % only the post-DIN makes sense
+                                 this_sample = ft_event(i+1).sample;
+                             elseif preFlag && postFlag
+                                 % choose the smaller one
+                                 if abs(preDiff) < abs(postDiff)
+                                     this_sample = ft_event(i-1).sample;
+                                 elseif abs(preDiff) > abs(postDiff)
+                                     this_sample = ft_event(i+1).sample;
+                                 elseif abs(preDiff) == abs(postDiff)
+                                     keyboard
+                                 end
+                             end
+                         elseif strcmp(ft_event(i+1).value,cfg.eventinfo.photodiodeDIN_str) && ~strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str) && (ft_event(i+1).sample - this_sample) <= photodiodeDIN_toleranceSamp
+                             this_sample = ft_event(i+1).sample;
+                         %elseif strcmp(ft_event(i-1).value,cfg.eventinfo.photodiodeDIN_str) && (ft_event(i-1).sample - this_sample) < 0 && abs(ft_event(i-1).sample - this_sample) <= photodiodeDIN_toleranceSamp
+                             % apparently the ethernet tags can be delayed
+                             % enough that the DIN shows up first
+                         %    this_sample = ft_event(i-1).sample;
+                             
+                         else
+                             error('DIN triggers not found, using default offset of %ims\n',defOffset);
+                         end
+                     catch
+                         warning('DIN triggers not used, using default offset of %i samples\n',defOffset);
+                         offsetSamp = offsetSamp + defOffset;
+                     end
+                else
+                    offsetSamp = offsetSamp + defOffset; %use average offset from photodiode                      
                 end
                 
                 % prestimulus sample

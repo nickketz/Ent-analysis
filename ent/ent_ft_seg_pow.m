@@ -29,10 +29,15 @@ exper.eventValues = {'flckr0','flckr6','flckr10','flckr20'};
 % Construct as a cell with one Nx2 matrix per session where N is
 % length(exper.eventValues{ses}) Order must correspond to the event order
 % in exper.eventValues.
-exper.prepost = {[-1.0 2.0; -1.0 2.0; -1.0 2.0; -1.0 2.0]};
+exper.prepost = {[-1.0 2.5; -1.0 2.5; -1.0 2.5; -1.0 2.5]};
 
 exper.subjects = {
-    'Ent_100'
+    'ENT_Pilot_1',...
+    'ENT_Pilot_4',...
+    'Ent_Pilot_05',...
+    'Ent_Pilot_06',...
+    'Ent_Pilot_07',...
+    'Ent_Pilot_08'
     };
 
 % The sessions that each subject ran; the strings in this cell are the
@@ -49,7 +54,7 @@ exper.sessions = {{'ses1'}};
 % directory where the data to read is located
 dirs.subDir = '';
 % dirs.dataDir = fullfile(exper.name,'EEG','Sessions','face_house_ratings','eppp',sprintf('%d_%d',exper.prepost(1)*1000,exper.prepost(2)*1000),dirs.subDir);
-dirs.behDir = fullfile(exper.name,'Behavioral','Sessions',dirs.subDir);
+dirs.behDir = fullfile(exper.name,'Behavioral','Sessions','test',dirs.subDir);
 % dirs.dataDir = fullfile(exper.name,'EEG','Sessions','ftpp',sprintf('%d_%d',exper.prepost(1)*1000,exper.prepost(2)*1000),dirs.subDir);
 dirs.dataDir = fullfile(exper.name,'EEG','Sessions','test',dirs.subDir);
 % Possible locations of the data files (dataroot)
@@ -86,8 +91,14 @@ ana.elec = ft_read_sens(files.elecfile,'fileformat',files.locsFormat);
 % raw data
 ana.segFxn = 'seg2ft';
 
-ana.offsetMS = 36; %due to anti-aliasing
-ana.offsetMSTCP = 0; %offset due to tcp delay (average based on timing tests)
+%avoid javaclasspath bug !!!path specific!!!  See http://bit.ly/1o7QlRk 
+mydir = pwd;
+cd('/Users/nketz/Documents/MATLAB/FTgit/external/egi_mff/')
+mff_setup
+cd(mydir);
+
+ana.offsetMS = 8; %due to anti-aliasing
+%ana.offsetMSTCP = 0; %offset due to tcp delay (average based on timing tests)
 
 ana.continuous = 'yes';
 % ana.trialFxn = 'space_trialfun';
@@ -122,7 +133,7 @@ end
 % process the data after segmentation?
 ana.ftFxn = 'ft_freqanalysis';
 % ftype is a string used in naming the saved files (data_FTYPE_EVENT.mat)
-ana.ftype = 'tfr';
+ana.ftype = 'pow';
 ana.overwrite.raw = 1;
 ana.overwrite.proc = 1;
 
@@ -131,7 +142,7 @@ cfg_proc = [];
 cfg_proc.method = 'wavelet';
 cfg_proc.width = 4;
 %cfg_proc.toi = -0.8:0.04:3.0;
-cfg_proc.toi = -0.5:0.04:2.0;
+cfg_proc.toi = -1.0:0.04:2.0;
 % evenly spaced frequencies, but not as many as foilim makes
 freqstep = (exper.sampleRate./(diff(exper.prepost{1}')*exper.sampleRate)) * 2;
 %cfg_proc.foi = 3:freqstep:50;
@@ -161,16 +172,16 @@ ana.cfg_cont.hpfiltord = 4;
 ana.cfg_cont.bsfilter = 'yes';
 ana.cfg_cont.bsfreq = [59 61];
 
-ana.artifact.continuousRepair = false;
-ana.artifact.continuousReject = false;
-ana.artifact.continuousICA = false;
+ana.artifact.continuousRepair = true;
+ana.artifact.continuousReject = true;
+ana.artifact.continuousICA = true;
 
 % artifact settings
 ana.artifact.reject = 'complete';
 ana.artifact.preArtBaseline = 'yes'; % yes=entire trial
 
 % set up for ftManual/ftAuto
-% ana.artifact.type = {'ftManual'};
+%ana.artifact.type = {'none'};
 ana.artifact.type = {'ftAuto'};
 % ana.artifact.resumeManArtFT = false;
 ana.artifact.resumeManArtContinuous = false;
@@ -179,13 +190,12 @@ ana.artifact.resumeICACompContinuous = false;
 % IMPORTANT: Not used for threshold artifacts. only use if segmenting a lot
 % of extra time around trial epochs. Otherwise set to zero.
 ana.artifact.trlpadding = 0;
-% ana.artifact.trlpadding = 0;
 ana.artifact.artpadding = 0.1;
 ana.artifact.fltpadding = 0;
 
 % set up for ftAuto after continuous ICA rejection
 ana.artifact.checkAllChan = true;
-ana.artifact.thresh = false;
+ana.artifact.thresh = true;
 ana.artifact.threshmin = -100;
 ana.artifact.threshmax = 100;
 ana.artifact.threshrange = 150;
@@ -198,16 +208,42 @@ ana.artifact.eog_art = false;
 % ana.artifact.eog_art_z = 3.5;
 
 % single precision to save space
-%cfg_pp.precision = 'single';
+cfg_pp.precision = 'single';
 
 cfg_proc.keeptrials = 'yes';
 
 % set the save directories
-[dirs,files] = mm_ft_setSaveDirs(exper,ana,cfg_proc,dirs,files,'tfr');
+[dirs,files] = mm_ft_setSaveDirs(exper,ana,cfg_proc,dirs,files,'pow');
 
 % create the raw and processed structs for each sub, ses, & event value
 [exper] = create_ft_struct(ana,cfg_pp,exper,dirs,files);
 
-process_ft_data(ana,cfg_proc,exper,dirs,files,cfg_pp);
+process_ft_data(ana,cfg_proc,exper,dirs);
 
+
+%%
+% save the analysis details
+
+backup_orig_AD = true;
+% whether to sort by subject number
+sortBySubj = false;
+% whether to overwite existing subjects in the struct
+replaceOrig = true;
+
+% concatenate the additional ones onto the existing ones
+saveFile = fullfile(dirs.saveDirProc,'analysisDetails.mat');
+if ~exist(saveFile,'file')
+  fprintf('Saving analysis details: %s...',saveFile);
+  save(saveFile,'exper','ana','dirs','files','cfg_proc','cfg_pp');
+  fprintf('Done.\n');
+else
+  additional_AD_file = fullfile(dirs.saveDirProc,sprintf('analysisDetails%s.mat',sprintf(repmat('_%s',1,length(exper.subjects)),exper.subjects{:})));
+  fprintf('Temporarily saving new analysis details: %s...',additional_AD_file);
+  save(additional_AD_file,'exper','ana','dirs','files','cfg_proc','cfg_pp');
+  
+  [exper,ana,dirs,files,cfg_proc,cfg_pp] = mm_mergeAnalysisDetails(saveFile,additional_AD_file,backup_orig_AD,sortBySubj,replaceOrig);
+end
+
+%
+adFile = '/Users/nketz/Documents/Documents/boulder/Entrain_EEG/Analysis/data/ENT/EEG/Sessions/test/ft_data/flckr0_flckr6_flckr10_flckr20_eq0_art_ftAuto/tfr_wavelet_w4_pow_3_50/analysisDetails.mat';
 
