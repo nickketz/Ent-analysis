@@ -1,4 +1,4 @@
-function out = ent_behavior(dirs,cfg)
+function out = ent_behavior(dirs,exper,cfg)
 %Behavioral analysis of Entrain experiment
 %
 % input
@@ -11,6 +11,7 @@ function out = ent_behavior(dirs,cfg)
 %    to condition bins, i.e. 10 rounds observed pctPeriod values to the
 %    nearest 10th of a percent.
 %    -doplots: bool to do plots or not.
+%    -badsubs: subject numbers to exclude from analysis
 %
 %
 % output
@@ -28,7 +29,17 @@ else
     end
 end
 
+
 logdata = entReadlogs(dirs,cfg);
+
+%verify subject number matches logdata
+snums = logdata.data.Subj(1,:);
+lnums = regexp(exper.subjects,'_([0-9]+)$','tokens');
+for isub = 1:length(snums)
+    if snums(isub) ~= str2double(lnums{isub}{1})
+        error('subject number logs don''t match exper data');
+    end
+end
 
 if ~isfield(cfg,'doplots')
     cfg.doplots = 0;
@@ -72,10 +83,15 @@ for iblk = cfg.block
     p2acc = mean(logdata.data.Correct(iphase2,:));
     
     %create indicies
+    %resp don't know to old/new question
+    rdknow = ~cellfun(@isempty,regexp(logdata.data.Answer,'^D'));
+    %resp don't know to pair question
+    rpdknow = ~cellfun(@isempty,regexp(logdata.data.Answer,'OD'));    
     %resp old
     rold = ~cellfun(@isempty,regexp(logdata.data.Answer,'^O[.]*'));
     %old trial
     iold = ~cellfun(@isempty,regexp(logdata.data.StimType,'Old'));
+    iold = iold & ~rdknow;
     %old correct
     cold = logdata.data.Correct>1;
     %old correct with pair correct
@@ -85,11 +101,11 @@ for iblk = cfg.block
     rnew = ~cellfun(@isempty,regexp(logdata.data.Answer,'^N'));
     %new trial
     inew = ~cellfun(@isempty,regexp(logdata.data.StimType,'New'));
+    inew = inew & ~rdknow;
     %new correct
     cnew = logdata.data.Correct == 1 & repmat(iphase3,1,size(logdata.data.Correct,2));
     
-    %resp don't know
-    rdknow = ~cellfun(@isempty,regexp(logdata.data.Answer,'^D'));
+
     
     
     %determine condition indicies from data
@@ -116,10 +132,10 @@ for iblk = cfg.block
     dprime = norminv(hit)-norminv(fa);
     
     %pair hit rate
-    phit = sum(rold & cpold)./sum(rold&iold);
+    phit = sum(rold & cpold)./sum(rold & iold & ~rpdknow);
     
     %dprime by cond
-    chit = cell(size(conds)); cmiss = chit; ccr = chit; cfa = chit;cdprime = chit;
+    chit = cell(size(conds)); cmiss = chit; ccr = chit; cfa = chit; cdprime = chit; cphit = chit;
     for icond = 1:length(conds)
         chit{icond} = sum(rold & iold & indConds{icond}) ./sum(iold & indConds{icond});
         chit{icond}(chit{icond}==1) = .99; %hack to avoid infinite dprime
@@ -129,7 +145,8 @@ for iblk = cfg.block
         cfa{icond}(cfa{icond}==0) = 1/(2*sum(inew(:,1)));%hack to avoid infinte dprime
         cdprime{icond} = norminv(chit{icond})-norminv(cfa{icond});
         %pair acc (norm based on responded 'old')
-        cphit{icond} = sum(cpold & indConds{icond} & rold)./sum(rold & indConds{icond});
+        cphit{icond} = sum(cpold & indConds{icond} & rold)./sum(rold & ~rpdknow & indConds{icond}); %discards 'don't know' trials
+%        cphit{icond} = sum(cpold & indConds{icond} & rold)./sum(rold & indConds{icond}); %considers 'don't know' trials as incorrect
     end
     
     
@@ -138,7 +155,7 @@ for iblk = cfg.block
     pctold = sum(rold)./sum(tmp);
     pctnew = sum(rnew)./sum(tmp);
     pctdknow = sum(rdknow&tmp)./sum(tmp);
-    
+    pctpdknow = sum(rpdknow)./sum(rold);
     
     
     if cfg.doplots
@@ -177,9 +194,10 @@ for iblk = cfg.block
         
         
         %pair-hit across and within conditions
-        tmp = cphit;
-        pairhit = reshape(cell2mat(tmp),[size(tmp{1},2) size(tmp,2)]);
-        tmp = pairhit;
+        %tmp = cphit;
+        %pairhit = reshape(cell2mat(tmp),[size(tmp{1},2) size(tmp,1)]);
+        %tmp = pairhit;
+        tmp = cell2mat(cphit)';
         figure('color','white');
         hold on
         plot(tmp,'.','markersize',30);
@@ -201,19 +219,21 @@ for iblk = cfg.block
         
         %resp bias
         figure('color','white');
-        b = bar([pctold' pctnew' pctdknow']);
-        mycolors = nan(3,3);
+        b = bar([pctold' pctnew' pctdknow' pctpdknow']);
+        mycolors = nan(4,3);
         cmap = colormap;
         mycolors(1,:) = cmap(1,:);
-        mycolors(2,:) = cmap(round(size(cmap,1)/2),:);
-        mycolors(3,:) = cmap(end,:);
+        mycolors(2,:) = cmap(round(size(cmap,1)/3),:);
+        mycolors(3,:) = cmap(round(size(cmap,1)*2/3),:);
+        mycolors(4,:) = cmap(end,:);
         hold on;
         shadedErrorBar(0:length(pctold)+1,repmat(mean(pctold),1,length(pctold)+2),repmat(ste(pctold'),1,length(pctold)+2),{'--','linewidth',2,'color',mycolors(1,:),'markerfacecolor',mycolors(1,:)},1);
         shadedErrorBar(0:length(pctnew)+1,repmat(mean(pctnew),1,length(pctnew)+2),repmat(ste(pctnew'),1,length(pctnew)+2),{'--','linewidth',2,'color',mycolors(2,:),'markerfacecolor',mycolors(2,:)},1);
         shadedErrorBar(0:length(pctdknow)+1,repmat(mean(pctdknow),1,length(pctdknow)+2),repmat(ste(pctdknow'),1,length(pctdknow)+2),{'--','linewidth',2,'color',mycolors(3,:),'markerfacecolor',mycolors(3,:)},1);
+        shadedErrorBar(0:length(pctpdknow)+1,repmat(mean(pctpdknow),1,length(pctpdknow)+2),repmat(ste(pctpdknow'),1,length(pctpdknow)+2),{'--','linewidth',2,'color',mycolors(4,:),'markerfacecolor',mycolors(4,:)},1);
         ylabel('Response Percentage (phase3)','fontsize',18);
         xlabel('Subject Number','fontsize',18);
-        legend({'old','new','Don''t Know'},'fontsize',18);
+        legend({'old','new','Don''t Know','pair DK'},'fontsize',18);
         set(gca,'fontsize',18);
         box off;
         
@@ -224,6 +244,7 @@ for iblk = cfg.block
     respbias.pctold = pctold;
     respbias.pctnew = pctnew;
     respbias.pctdknow = pctdknow;
+    respbias.pctpdknow = pctpdknow;
     
     results.hit = hit;
     results.miss = miss;

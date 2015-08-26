@@ -53,6 +53,9 @@ if all(ismember(orig_anaDetails.exper.eventValues,add_anaDetails.exper.eventValu
         fprintf('Concatenating%s after%s...\n',sprintf(repmat(' %s',1,sum(subjects_new)),addSub_str{:}),sprintf(repmat(' %s',1,sum(subjects_new)),orig_anaDetails.exper.subjects{:}));
       end
       
+      if size(orig_anaDetails.exper.subjects,2)~=1
+          orig_anaDetails.exper.subjects = orig_anaDetails.exper.subjects';
+      end
       subjects_all = cat(1,orig_anaDetails.exper.subjects,add_anaDetails.exper.subjects(subjects_new));
       
       newSubInd = find(subjects_new);

@@ -1208,8 +1208,8 @@ for evVal = 1:length(eventValue)
     if ana.useExpInfo
       % remove the buffer trialinfo -1s; those were set because the cfg.trl
       % matrix needed to hold all eventValues
-      ft_raw.(eventValue{evVal}).trialinfo = ft_raw.(eventValue{evVal}).trialinfo(:,1:length(ana.trl_order.(eventValue{evVal})));
-      trialinfo_allEv.(eventValue{evVal}) = allTrialinfo(allTrialinfo(:,trialinfo_eventNumCol) == evVal,1:length(ana.trl_order.(eventValue{evVal})));
+      ft_raw.(eventValue{evVal}).trialinfo = ft_raw.(eventValue{evVal}).trialinfo(:,1:length(ana.trl_order.(eventValue{evVal}))+1); %was clipping last col of trialinfo because doesn't count eventNumCol in length of trl_order
+      trialinfo_allEv.(eventValue{evVal}) = allTrialinfo(allTrialinfo(:,trialinfo_eventNumCol) == evVal,1:length(ana.trl_order.(eventValue{evVal}))+1);
     end
     
     fprintf('Done.\n');

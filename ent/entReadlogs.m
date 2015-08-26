@@ -5,6 +5,7 @@ function outdata = entReadlogs(dirs,cfg)
 %       dirs: struct containing relevent directories for this experiment
 %       cfg
 %        filefiltstr: regexp filter on file listing, default is 'EntAssoc_*_Sub[0-9]{1,2}\.txt'
+%        badsubs: subject numbers to exclude from analysis
 %
 %   output:
 %       outdata: struc with headernames as matricies with Subs on the

@@ -41,9 +41,9 @@ exper.subjects = {
 %      'ENT_9',...
 %      'ENT_Pilot_11',...
 %      'ENT_10',...
-%      'ENT_13',...  %only 6 usable trials!
+      'ENT_13',...  %only 6 usable trials!
 %      'ENT_14',...  
-      'ENT_15',...
+%      'ENT_15',...
     };
 
 % The sessions that each subject ran; the strings in this cell are the
@@ -60,9 +60,9 @@ exper.sessions = {{'ses1'}};
 % directory where the data to read is located
 dirs.subDir = '';
 % dirs.dataDir = fullfile(exper.name,'EEG','Sessions','face_house_ratings','eppp',sprintf('%d_%d',exper.prepost(1)*1000,exper.prepost(2)*1000),dirs.subDir);
-dirs.behDir = fullfile(exper.name,'Behavioral','Sessions','test',dirs.subDir);
+dirs.behDir = fullfile(exper.name,'Behavioral','Sessions','mfftest',dirs.subDir);
 % dirs.dataDir = fullfile(exper.name,'EEG','Sessions','ftpp',sprintf('%d_%d',exper.prepost(1)*1000,exper.prepost(2)*1000),dirs.subDir);
-dirs.dataDir = fullfile(exper.name,'EEG','Sessions','test',dirs.subDir);
+dirs.dataDir = fullfile(exper.name,'EEG','Sessions','mfftest',dirs.subDir);
 % Possible locations of the data files (dataroot)
 dirs.serverDir = fullfile(filesep,'Volumes','curranlab','Data');
 dirs.serverLocalDir = fullfile(filesep,'Volumes','RAID','curranlab','Data');
@@ -160,59 +160,20 @@ cfg_proc.output = 'pow';
 % any preprocessing? (run after processing artifacts)
 cfg_pp = [];
 % average rereference
-cfg_pp.reref = 'yes';
+cfg_pp.reref = 'no';
 cfg_pp.refchannel = 'all';
 cfg_pp.implicitref = exper.refChan;
 % do a baseline correction
-cfg_pp.demean = 'yes';
+cfg_pp.demean = 'no';
 cfg_pp.baselinewindow = [-0.2 0];
 
-
-% preprocess continuous data in these ways
-ana.cfg_cont.lpfilter = 'yes';
-ana.cfg_cont.lpfreq = 100;
-ana.cfg_cont.hpfilter = 'yes';
-ana.cfg_cont.hpfreq = 0.1;
-ana.cfg_cont.hpfilttype = 'but';
-ana.cfg_cont.hpfiltord = 4;
-ana.cfg_cont.bsfilter = 'yes';
-ana.cfg_cont.bsfreq = [59 61];
-
-ana.artifact.continuousRepair = true;
-ana.artifact.continuousReject = false;
-ana.artifact.continuousICA = true;
 
 % artifact settings
 ana.artifact.reject = 'complete';
 ana.artifact.preArtBaseline = 'yes'; % yes=entire trial
 
 % set up for ftManual/ftAuto
-%ana.artifact.type = {'none'};
-ana.artifact.type = {'ftAuto'};
-% ana.artifact.resumeManArtFT = false;
-ana.artifact.resumeManArtContinuous = false;
-ana.artifact.resumeICACompContinuous = false;
-% negative trlpadding: don't check that time (on both sides) for artifacts.
-% IMPORTANT: Not used for threshold artifacts. only use if segmenting a lot
-% of extra time around trial epochs. Otherwise set to zero.
-ana.artifact.trlpadding = 0;
-ana.artifact.artpadding = 0.1;
-ana.artifact.fltpadding = 0;
-
-% set up for ftAuto after continuous ICA rejection
-ana.artifact.checkAllChan = true;
-ana.artifact.thresh = true;
-ana.artifact.threshmin = -100;
-ana.artifact.threshmax = 100;
-ana.artifact.threshrange = 150;
-ana.artifact.basic_art = true;
-ana.artifact.basic_art_z = 30;
-ana.artifact.jump_art = true;
-ana.artifact.jump_art_z = 30;
-
-% eog_art is only used with ftAuto
-ana.artifact.eog_art = true;
-ana.artifact.eog_art_z = 3.5;
+ana.artifact.type = {'nsAuto'};
 
 % single precision to save space
 cfg_pp.precision = 'single';

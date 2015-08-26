@@ -3,11 +3,10 @@
 %load analysis details
 adFile = '/Users/nketz/Documents/Documents/boulder/Entrain_EEG/Analysis/data/ENT/EEG/Sessions/test/ft_data/flckr0_flckr6_flckr10_flckr20_eq0_art_ftAuto/pow_wavelet_w4_pow_3_50/analysisDetails.mat';
 load(adFile)
-
+%%
 %define trials of interest
 ana.eventValues = {{'flckr0','flckr6','flckr10','flckr20'}};
 
-keeptrials = 1;
 %load data into ft data struct
 %[data_pow,exper] = mm_loadSubjectData(exper,dirs,ana,'pow',keeptrials,'trialinfo',false);
 cfg = [];
@@ -18,7 +17,7 @@ cfg.latency = 'all';
 cfg.frequency = 'all';
 
 %cfg.keeptrials = 'no';
-cfg.keeptrials = 'yes';
+cfg.keeptrials = 'no';
 cfg.equatetrials = 'no';
 % %cfg.equatetrials = 'yes';
 
@@ -65,14 +64,13 @@ cfg.rmevokedpow = 'no';
 % % baseline using all events
 % cfg.baseline_events = 'all';
 
-cfg.keeptrials = 'no';
 
 [data_pow,exper] =  mm_ft_loadData_multiSes(cfg,exper,dirs,ana);
 
 %% find bad performing subjects
 
-out = ent_behavior(dirs);
-exper.badSub = (out.results.dprime<2)';
+out = ent_behavior(dirs,exper);
+exper.badSub = (out.results.dprime<.1)';
 ana = mm_ft_elecGroups(ana);
 
 %% get the grand average
@@ -130,7 +128,8 @@ cfg_ft.xlim = [-1 2];
 %cfg_ft.ylim = [5.8 6.2];
 %cfg_ft.ylim = [9.8 10.2];
 %cfg_ft.ylim = [19.8 20.2];
-cfg_ft.ylim = [3 30];
+cfg_ft.ylim = [3 50];
+%cfg_ft.ylim = [3 8];
 %cfg_ft.ylim = [8 12];
 %cfg_ft.ylim = [12 28];
 %cfg_ft.ylim = [28 64];
@@ -143,7 +142,7 @@ cfg_ft.showlabels = 'yes';
 cfg_ft.colorbar = 'yes';
 cfg_ft.interactive = 'yes';
 cfg_ft.layout = ft_prepare_layout([],ana);
-cfg_ft.channel = ana.elecGroups{ismember(ana.elecGroupsStr,'Oz')};
+cfg_ft.channel = ana.elecGroups{ismember(ana.elecGroupsStr,'PS2')};
 
 for ses = 1:length(ana.eventValues)
 
@@ -169,9 +168,10 @@ cfg_plot.conditions = {{'flckr6','flckr0'},{'flckr10','flckr0'},{'flckr20','flck
 
 cfg_ft = [];
 %cfg_ft.xlim = [-1 2]; % time
-%cfg_ft.ylim = [3 30]; % freq
-cfg_ft.ylim = [9.8 10.2];
+%cfg_ft.ylim = [4 8]; % freq
+%cfg_ft.ylim = [9.8 10.2];
 %cfg_ft.ylim = [5.8 6.2]; % freq
+cfg_ft.ylim = [19.8 20.2]; % freq
 %cfg_ft.ylim = [12 30]; % freq
 %cfg_ft.ylim = [28 50]; % freq
 cfg_ft.parameter = 'powspctrm';
@@ -197,7 +197,7 @@ cfg_plot.subplot = 0;
 cfg_ft.xlim = [0 1]; % time
 cfg_ft.avgovertime = 'no';
 %cfg_ft.xlim = (0:0.05:1.0); % time
-cfg_plot.roi = {'posterior_noPeriph'};
+cfg_plot.roi = {'PS2'};
 
 
 % cfg_plot.ftFxn = 'ft_multiplotTFR';
@@ -230,7 +230,8 @@ cfg.linestyle = {'-','--','-','--'};
 % cfg.freqs = ana.freq.alpha_lower;
 % cfg.freqs = ana.freq.alpha_upper;
 % cfg.freqs = ana.freq.beta_lower;
-cfg_ana.freqs = {[5.8 6.2],[9.8 10.2],[19.8 20.2]};
+cfg_ana.freqs = {[5.8 6.2],[9.8 10.2],[19.8 20.2],[39.8 40.2]};
+%cfg_ana.freqs = {[4 8],[8 12],[12 30]};
 % cfg.rois = {sigElecs};
 
 cfg.plotTitle = false;
@@ -257,7 +258,7 @@ cfg.yminmax = [-3 3];
 %cfg.yminmax = [-0.5 0.2];
 cfg.nCol = 3;
 
-cfg.rois = 'posterior';
+cfg.rois = 'PS2';
 
 % % whole power
 % cfg.type = 'line_pow';
@@ -274,14 +275,16 @@ cfg.latency = [0 1];
 cfg.avgovertime = 'yes';
 
 cfg_ana.frequency = {[5.8 6.2],[9.8 10.2],[19.8 20.2]};
+%cfg_ana.frequency = {[3 8],[8 12],[12 30]};
 cfg.avgoverfreq = 'yes';
 
-roi = 'posterior';
+roi = 'PS2';
 
 roiind = ismember(ana.elecGroupsStr,roi);
 cfg.channel = ana.elecGroups{roiind};
 cfg.avgoverchan = 'yes';
 avgdata = [];
+cbardata = {};
 for ifreq = 1:length(cfg_ana.frequency)
     
     cfg.frequency = cfg_ana.frequency{ifreq};
@@ -303,6 +306,32 @@ for ifreq = 1:length(cfg_ana.frequency)
     set(gca,'Xticklabel',conds);
     ylabel(sprintf('%.01f-%.01f avg power',cfg.frequency(1), cfg.frequency(2)));
     set(gca,'fontsize',24);
+    cbardata{ifreq} = bardata;
+end
+%%
+%correlation of memory with entrained power
+icond = 1;
+dpcdval = nan(length(conds)-1,length(cfg_ana.frequency));
+dpcval = nan(length(conds),length(cfg_ana.frequency));
+
+pcdval = nan(length(conds)-1,length(cfg_ana.frequency));
+pcval = nan(length(conds),length(cfg_ana.frequency));
+for ifreq = 1:length(cfg_ana.frequency)
+    
+    pw = cbardata{ifreq};
+    dpw = nan(size(pw,1),size(pw,2)-1);
+    for icol = 2:size(pw,2)
+        dpw(:,icol-1) = pw(:,icol)-pw(:,1);
+    end
+    dp = out.results.bycond.dprime{icond}';
+    ph = out.results.bycond.pairhit{icond}';
+    
+    dpcdval(:,ifreq) = corr(dpw,dp);
+    dpcval(:,ifreq) = corr(pw,dp);
+    
+    pcdval(:,ifreq) = corr(dpw,ph);
+    pcval(:,ifreq) = corr(pw,ph);
+    
 end
 
 
