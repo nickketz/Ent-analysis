@@ -132,20 +132,20 @@ for cnd = 1:length(cfg_ana.conditions)
   cfg.conditions = cfg_ana.conditions{cnd};
   cfg.data_str = 'data';
   cfg.is_ga = 0;
-  ana_str = mm_ft_catSubStr(cfg,exper);
- % ana_str = mm_catSubStr_multiSes(cfg,exper,sesNum);
+  %ana_str = mm_ft_catSubStr(cfg,exper);
+  ana_str = mm_catSubStr_multiSes(cfg,exper,sesNum);
   
   % set some info to use later
   vs_str = sprintf('%s%s',cfg_ana.conditions{cnd}{1},sprintf(repmat('vs%s',1,cfg_ana.numConds-1),cfg_ana.conditions{cnd}{2:end}));
   
   % put in all the subjects for the first conditions
   sesNum = 1;
-  subj_str = sprintf('%s',ana_str.(cfg_ana.conditions{cnd}{1}){sesNum});
-  %subj_str = sprintf('%s',ana_str.(cfg_ana.conditions{cnd}{1}));
+  %subj_str = sprintf('%s',ana_str.(cfg_ana.conditions{cnd}{1}){sesNum});
+  subj_str = sprintf('%s',ana_str.(cfg_ana.conditions{cnd}{1}));
   % do the subsequent conditions
   for i = 2:cfg_ana.numConds
-    subj_str = cat(2,subj_str,sprintf(',%s',ana_str.(cfg_ana.conditions{cnd}{i}){sesNum}));
-    %subj_str = cat(2,subj_str,sprintf(',%s',ana_str.(cfg_ana.conditions{cnd}{i})));
+    %subj_str = cat(2,subj_str,sprintf(',%s',ana_str.(cfg_ana.conditions{cnd}{i}){sesNum}));
+    subj_str = cat(2,subj_str,sprintf(',%s',ana_str.(cfg_ana.conditions{cnd}{i})));
   end
   
   % make the design matrix
@@ -187,11 +187,13 @@ for cnd = 1:length(cfg_ana.conditions)
   if isfield(stat_clus.(vs_str),'posclusters')
     if ~isempty(stat_clus.(vs_str).posclusters)
       foundclus = 1;
+      fprintf('min pos cluster is: %.02f\n',stat_clus.(vs_str).posclusters(1).prob);
     end
   end
   if isfield(stat_clus.(vs_str),'negclusters')
     if ~isempty(stat_clus.(vs_str).negclusters)
       foundclus = 1;
+      fprintf('min neg cluster is: %.02f\n',stat_clus.(vs_str).negclusters(1).prob);
     end
   end
   

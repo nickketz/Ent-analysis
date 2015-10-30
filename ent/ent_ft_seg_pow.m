@@ -31,19 +31,32 @@ exper.eventValues = {'flckr0','flckr6','flckr10','flckr20'};
 exper.prepost = {[-1.0 2.5; -1.0 2.5; -1.0 2.5; -1.0 2.5]};
 
 exper.subjects = {
-%     'ENT_Pilot_1',...
-%     'ENT_Pilot_4',...
+%     'ENT_Pilot_01',...
+%     'ENT_Pilot_04',...
 %     'Ent_Pilot_05',...
 %     'Ent_Pilot_06',...
 %     'Ent_Pilot_07',...
-%     'Ent_Pilot_08'
-%      'ENT_12',...
-%      'ENT_9',...
-%      'ENT_Pilot_11',...
+%     'Ent_Pilot_08',...
+%      'ENT_09',...    
 %      'ENT_10',...
+%      'ENT_Pilot_11',...
+%      'ENT_12',...
 %      'ENT_13',...  %only 6 usable trials!
 %      'ENT_14',...  
-      'ENT_15',...
+%      'ENT_15',...
+%     'ENT_16',... %no behavioral data?
+%     'ENT_17',...
+%     'ENT_18',...
+%     'ENT_19',...
+%     'ENT_20',...
+%      'ENT_21',...
+%      'ENT_22',...
+%      'ENT_23',...
+%      'ENT_24',...
+%      'ENT_25',...
+%      'ENT_26',...
+%      'ENT_27',...
+      'ENT_28',...
     };
 
 % The sessions that each subject ran; the strings in this cell are the
@@ -60,11 +73,11 @@ exper.sessions = {{'ses1'}};
 % directory where the data to read is located
 dirs.subDir = '';
 % dirs.dataDir = fullfile(exper.name,'EEG','Sessions','face_house_ratings','eppp',sprintf('%d_%d',exper.prepost(1)*1000,exper.prepost(2)*1000),dirs.subDir);
-dirs.behDir = fullfile(exper.name,'Behavioral','Sessions','test',dirs.subDir);
+dirs.behDir = fullfile(exper.name,'Behavioral','Sessions','pilot',dirs.subDir);
 % dirs.dataDir = fullfile(exper.name,'EEG','Sessions','ftpp',sprintf('%d_%d',exper.prepost(1)*1000,exper.prepost(2)*1000),dirs.subDir);
-dirs.dataDir = fullfile(exper.name,'EEG','Sessions','test',dirs.subDir);
+dirs.dataDir = fullfile(exper.name,'EEG','Sessions','pilot',dirs.subDir);
 % Possible locations of the data files (dataroot)
-dirs.serverDir = fullfile(filesep,'Volumes','curranlab','Data');
+%dirs.serverDir = fullfile(filesep,'Volumes','curranlab','Data');
 dirs.serverLocalDir = fullfile(filesep,'Volumes','RAID','curranlab','Data');
 dirs.dreamDir = fullfile(filesep,'data','projects','curranlab');
 dirs.localDir = fullfile(getenv('HOME'),'Documents','Documents','boulder','Entrain_EEG','Analysis','data');
@@ -180,7 +193,7 @@ ana.cfg_cont.bsfreq = [59 61];
 
 ana.artifact.continuousRepair = true;
 ana.artifact.continuousReject = false;
-ana.artifact.continuousICA = true;
+ana.artifact.continuousICA = false;
 
 % artifact settings
 ana.artifact.reject = 'complete';
@@ -204,15 +217,15 @@ ana.artifact.checkAllChan = true;
 ana.artifact.thresh = true;
 ana.artifact.threshmin = -100;
 ana.artifact.threshmax = 100;
-ana.artifact.threshrange = 150;
+ana.artifact.threshrange = 200;
 ana.artifact.basic_art = true;
-ana.artifact.basic_art_z = 30;
+ana.artifact.basic_art_z = 40;
 ana.artifact.jump_art = true;
-ana.artifact.jump_art_z = 30;
+ana.artifact.jump_art_z = 40;
 
 % eog_art is only used with ftAuto
 ana.artifact.eog_art = true;
-ana.artifact.eog_art_z = 3.5;
+ana.artifact.eog_art_z = 4.5;
 
 % single precision to save space
 cfg_pp.precision = 'single';
@@ -251,6 +264,26 @@ else
   [exper,ana,dirs,files,cfg_proc,cfg_pp] = mm_mergeAnalysisDetails(saveFile,additional_AD_file,backup_orig_AD,sortBySubj,replaceOrig);
 end
 
-%
-adFile = '/Users/nketz/Documents/Documents/boulder/Entrain_EEG/Analysis/data/ENT/EEG/Sessions/test/ft_data/flckr0_flckr6_flckr10_flckr20_eq0_art_ftAuto/tfr_wavelet_w4_pow_3_50/analysisDetails.mat';
+%%
+%save adfile simple
+saveFile = fullfile(dirs.saveDirProc,'analysisDetails.mat');
+if ~exist(saveFile,'file')
+  fprintf('Saving analysis details: %s...',saveFile);
+  save(saveFile,'exper','ana','dirs','files','cfg_proc','cfg_pp');
+  fprintf('Done.\n');
+else
+    %making dated backup
+    busaveFile = fullfile(dirs.saveDirProc,['analysisDetails_' datestr(now,30) '.mat']);
+    fprintf('Saving backup analysis details: %s...',busaveFile);
+    status = system(['mv ' saveFile ' ' busaveFile]);
+    fprintf('done\n');
+    if status==0
+        fprintf('Saving analysis details: %s...',saveFile);
+        save(saveFile,'exper','ana','dirs','files','cfg_proc','cfg_pp');
+        fprintf('done\n');
+    else
+        fprintf('\n\nerror making backup, aborted saving!!!\n\n');
+    end
+end
+
 

@@ -20,10 +20,10 @@ if exist('cfg','var')
     if isfield(cfg, 'filefiltstr')
         filesmatch = regexp(files,cfg.filefiltstr);
     else
-        filesmatch = regexp(files,'EntAssoc_[0-9]+_Sub[0-9]{1,2}\.txt');
+        filesmatch = regexp(files,'$EntAssoc_[0-9]+_Sub[0-9]{1,2}\.txt');
     end       
 else
-    filesmatch = regexp(files,'EntAssoc_[0-9]+_Sub[0-9]{1,2}\.txt');
+    filesmatch = regexp(files,'$EntAssoc_[0-9]+_Sub[0-9]{1,2}\.txt');
     cfg = [];
 end
 filesmatch = ~cellfun(@isempty,filesmatch);

@@ -1,8 +1,25 @@
 %preliminary power analysis to check on flckr condtions
 
 %load analysis details
-adFile = '/Users/nketz/Documents/Documents/boulder/Entrain_EEG/Analysis/data/ENT/EEG/Sessions/test/ft_data/flckr0_flckr6_flckr10_flckr20_eq0_art_ftAuto/pow_wavelet_w4_pow_3_50/analysisDetails.mat';
+adFile = '/Users/nketz/Documents/Documents/boulder/Entrain_EEG/Analysis/data/ENT/EEG/Sessions/pilot/ft_data/flckr0_flckr6_flckr10_flckr20_eq0_art_ftAuto/pow_wavelet_w4_pow_3_50/analysisDetails.mat';
+%adFile = '/Users/nketz/Documents/Documents/boulder/Entrain_EEG/Analysis/data/ENT/EEG/Sessions/test/ft_data/flckr0_flckr6_flckr10_flckr20_eq0_art_ftAuto/pow_wavelet_w4_pow_3_50/analysisDetails.mat';
 load(adFile)
+
+%%
+%remove subs?
+conds = exper.eventValues;
+tmpexper = exper;
+%find subs with 0 trials in any condition
+nTrials = [];
+for icond = 1:length(conds)
+    nTrials = cat(2,nTrials,exper.nTrials.(conds{icond}));
+end
+badInd = sum(nTrials==0,2);
+%also remove sub20 for no behav data
+%badInd(strcmp(exper.subjects,'ENT_20')) = 1;
+
+exper = ent_rmSubs(exper,badInd);
+
 %%
 %define trials of interest
 ana.eventValues = {{'flckr0','flckr6','flckr10','flckr20'}};
@@ -47,7 +64,8 @@ cfg.norm_trials = 'single';
 % cfg.baseline_type = 'relchange';
 % cfg.baseline_type = 'relative';
 
-cfg.baseline_time = [-0.3 -0.1];
+%cfg.baseline_time = [-0.3 -0.1];
+cfg.baseline_time = [];
 
 % at what data stage should it be baseline corrected?
 cfg.baseline_data = 'pow';
@@ -82,7 +100,7 @@ cfg_ana.data_str = 'data_pow';
 
 cfg_ft = [];
 cfg_ft.keepindividual = 'no';
-% cfg_ft.keepindividual = 'yes';
+%cfg_ft.keepindividual = 'yes';
 
 if strcmp(cfg_ana.data_str,'data_pow')
   ga_pow = struct;
@@ -128,7 +146,7 @@ cfg_ft.xlim = [-1 2];
 %cfg_ft.ylim = [5.8 6.2];
 %cfg_ft.ylim = [9.8 10.2];
 %cfg_ft.ylim = [19.8 20.2];
-cfg_ft.ylim = [3 50];
+cfg_ft.ylim = [3 30];
 %cfg_ft.ylim = [3 8];
 %cfg_ft.ylim = [8 12];
 %cfg_ft.ylim = [12 28];
@@ -136,7 +154,7 @@ cfg_ft.ylim = [3 50];
 %cfg_ft.zlim = [-1 1];
 %cfg_ft.zlim = [-2 2];
 %elseif strcmp(cfg_ft.baselinetype,'relative')
-cfg_ft.zlim = [-2 2];
+cfg_ft.zlim = [-.5 .5];
 %end
 cfg_ft.showlabels = 'yes';
 cfg_ft.colorbar = 'yes';
@@ -148,7 +166,13 @@ for ses = 1:length(ana.eventValues)
 
     for evVal = 1:length(ana.eventValues{ses})
       figure
-      ft_singleplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal}));        
+      ft_singleplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal})); 
+      hold on
+      entn = regexp(ana.eventValues{ses}{evVal},'([0-9]+)$','tokens');
+      entn = str2num(entn{1}{1});
+      if entn>0
+          plot(xlim,[entn entn],'--k','linewidth',2)
+      end
       %ft_topoplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal}));              
       %ft_multiplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal}));
       set(gcf,'Name',sprintf('%s',strrep(ana.eventValues{ses}{evVal},'_','-')))
@@ -165,17 +189,18 @@ cfg_plot.plotTitle = 1;
 % comparisons to make
 cfg_plot.conditions = {{'flckr6','flckr0'},{'flckr10','flckr0'},{'flckr20','flckr0'}};
 %cfg_plot.conditions = {{'flckr6','flckr0'},{'flckr6','flckr10'},{'flckr6','flckr20'}};
-
+%cfg_plot.conditions = {{'flckr20','flckr0'}};
 cfg_ft = [];
 %cfg_ft.xlim = [-1 2]; % time
 %cfg_ft.ylim = [4 8]; % freq
+%cfg_ft.ylim = [8 12]; % freq
 %cfg_ft.ylim = [9.8 10.2];
 %cfg_ft.ylim = [5.8 6.2]; % freq
 cfg_ft.ylim = [19.8 20.2]; % freq
-%cfg_ft.ylim = [12 30]; % freq
+%cfg_ft.ylim = [3 30]; % freq
 %cfg_ft.ylim = [28 50]; % freq
 cfg_ft.parameter = 'powspctrm';
-cfg_ft.zlim = [-1 1]; % pow
+cfg_ft.zlim = [-.5 .5]; % pow
 
 %cfg_ft.colorbar = 'no';
 cfg_ft.interactive = 'yes';
@@ -253,7 +278,7 @@ cfg.linewidth = 2;
 % cfg.limitlinewidth = 0.5;
 % cfg.textFontSize = 10;
 
-cfg.yminmax = [-3 3];
+cfg.yminmax = [-2 2];
 %cfg.yminmax = [-0.6 0.6];
 %cfg.yminmax = [-0.5 0.2];
 cfg.nCol = 3;
@@ -271,7 +296,7 @@ end
 
 %% plot avg pow over time window 
 
-cfg.latency = [0 1];
+cfg.latency = [0.2 1];
 cfg.avgovertime = 'yes';
 
 cfg_ana.frequency = {[5.8 6.2],[9.8 10.2],[19.8 20.2]};
@@ -310,13 +335,13 @@ for ifreq = 1:length(cfg_ana.frequency)
 end
 %%
 %correlation of memory with entrained power
-icond = 1;
+icond = 2;
 dpcdval = nan(length(conds)-1,length(cfg_ana.frequency));
 dpcval = nan(length(conds),length(cfg_ana.frequency));
 
 pcdval = nan(length(conds)-1,length(cfg_ana.frequency));
 pcval = nan(length(conds),length(cfg_ana.frequency));
-for ifreq = 1:length(cfg_ana.frequency)
+for ifreq = 1:length(cfg_ana.frequency) 
     
     pw = cbardata{ifreq};
     dpw = nan(size(pw,1),size(pw,2)-1);

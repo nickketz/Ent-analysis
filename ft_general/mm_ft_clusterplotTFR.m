@@ -159,6 +159,7 @@ for cnd = 1:length(cfg_plot.conditions)
         
         if isequal(cfg_ft.avgoverfreq,'yes')
           ft_clusterplot(cfg_ft,stat_clus.(vs_str));
+          keyboard
         elseif isequal(cfg_ft.avgoverfreq,'no')
           % save the fields
           conditions_orig = cfg_plot.conditions;

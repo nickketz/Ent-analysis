@@ -1,4 +1,4 @@
-function out = ent_behavior(dirs,exper,cfg)
+function out = ent_behavior(cfg,dirs,exper)
 %Behavioral analysis of Entrain experiment
 %
 % input
@@ -7,11 +7,9 @@ function out = ent_behavior(dirs,exper,cfg)
 %    -blocks: array of which blocks to break down output by, output will be a
 %    strucutred array with stats calculated for each of the blocks in the
 %    array
-%    -precision: precision of Freq to adhere to when assigning stims
-%    to condition bins, i.e. 10 rounds observed pctPeriod values to the
-%    nearest 10th of a percent.
 %    -doplots: bool to do plots or not.
 %    -badsubs: subject numbers to exclude from analysis
+%    -matchexper: match exper subject structure (def = 1)
 %
 %
 % output
@@ -29,17 +27,52 @@ else
     end
 end
 
+if ~isfield(cfg,'matchexper')
+    cfg.matchexper=1;
+end
 
 logdata = entReadlogs(dirs,cfg);
+tmpdata = logdata;
+tmpdata.logname = {};
+fnames = fieldnames(tmpdata.data);
 
-%verify subject number matches logdata
-snums = logdata.data.Subj(1,:);
-lnums = regexp(exper.subjects,'_([0-9]+)$','tokens');
-for isub = 1:length(snums)
-    if snums(isub) ~= str2double(lnums{isub}{1})
-        error('subject number logs don''t match exper data');
+
+if cfg.matchexper == 1
+    %verify subject number matches logdata
+    snums = logdata.data.Subj(1,:);
+    lnums = regexp(exper.subjects,'_([0-9]+)$','tokens');
+    lnums = cellfun(@(x) (str2num(x{1}{1})),lnums);
+    for isub = 1:length(lnums)
+        %find the logfile that matches subject number
+        ind = lnums(isub) == snums;
+        if sum(ind) == 0
+            error('could not find %s in logs',exper.subjects{isub});
+        elseif sum(ind)>1
+            error('non unique subject number for subj %s',exper.subjects{isub});
+        end
+        
+        %rearrange log data to match exper.subjects
+        for ifield = 1:length(fnames)
+            if isub == 1
+                tmpdata.data.(fnames{ifield}) = logdata.data.(fnames{ifield})(:,ind);
+            else
+                tmpdata.data.(fnames{ifield}) = cat(2,tmpdata.data.(fnames{ifield}),logdata.data.(fnames{ifield})(:,ind));
+            end
+        end
+        if isub==1
+            tmpdata.logname = logdata.logname(ind);
+        else
+            tmpdata.logname = cat(1,tmpdata.logname, logdata.logname(ind));
+        end
     end
+    logdata = tmpdata;
 end
+
+
+%     if snums(isub) ~= str2double(lnums{isub}{1})
+%         warning('subject number logs don''t match exper data\nlog for subj %i doesn''t match %ith exper index (subj %s)',snums(isub), isub, lnums{isub}{1}{1});
+%     end
+%end
 
 if ~isfield(cfg,'doplots')
     cfg.doplots = 0;
@@ -86,7 +119,7 @@ for iblk = cfg.block
     %resp don't know to old/new question
     rdknow = ~cellfun(@isempty,regexp(logdata.data.Answer,'^D'));
     %resp don't know to pair question
-    rpdknow = ~cellfun(@isempty,regexp(logdata.data.Answer,'OD'));    
+    rpdknow = ~cellfun(@isempty,regexp(logdata.data.Answer,'OD'));
     %resp old
     rold = ~cellfun(@isempty,regexp(logdata.data.Answer,'^O[.]*'));
     %old trial
@@ -105,7 +138,7 @@ for iblk = cfg.block
     %new correct
     cnew = logdata.data.Correct == 1 & repmat(iphase3,1,size(logdata.data.Correct,2));
     
-
+    
     
     
     %determine condition indicies from data
@@ -120,7 +153,7 @@ for iblk = cfg.block
     for icond = 1:length(conds)
         indConds{icond} = logdata.data.Freq==conds(icond);
     end
-
+    
     
     %dprime
     hit = sum(rold & iold)./sum(iold);
@@ -130,12 +163,15 @@ for iblk = cfg.block
     fa = sum(rold & inew)./sum(inew);
     fa(fa==0) = 1/(2*sum(inew(:,1)));
     dprime = norminv(hit)-norminv(fa);
+    c = -1*((norminv(hit)+norminv(fa))./2);
+    beta = exp(((norminv(fa).^2-norminv(hit))/2).^2); %from Stanislaw and Todorow 1999
     
     %pair hit rate
     phit = sum(rold & cpold)./sum(rold & iold & ~rpdknow);
+    nphit = sum(rold & iold & ~rpdknow);
     
     %dprime by cond
-    chit = cell(size(conds)); cmiss = chit; ccr = chit; cfa = chit; cdprime = chit; cphit = chit;
+    chit = cell(size(conds)); cmiss = chit; ccr = chit; cfa = chit; cdprime = chit; cphit = chit; cptrials = cphit;
     for icond = 1:length(conds)
         chit{icond} = sum(rold & iold & indConds{icond}) ./sum(iold & indConds{icond});
         chit{icond}(chit{icond}==1) = .99; %hack to avoid infinite dprime
@@ -146,7 +182,9 @@ for iblk = cfg.block
         cdprime{icond} = norminv(chit{icond})-norminv(cfa{icond});
         %pair acc (norm based on responded 'old')
         cphit{icond} = sum(cpold & indConds{icond} & rold)./sum(rold & ~rpdknow & indConds{icond}); %discards 'don't know' trials
-%        cphit{icond} = sum(cpold & indConds{icond} & rold)./sum(rold & indConds{icond}); %considers 'don't know' trials as incorrect
+        cptrials{icond} = sum(rold & ~rpdknow & indConds{icond});
+%         cphit{icond} = sum(cpold & indConds{icond} & rold)./sum(rold & indConds{icond}); %considers 'don't know' trials as incorrect
+%         cptrials{icond} = sum(rold & indConds{icond});
     end
     
     
@@ -201,7 +239,7 @@ for iblk = cfg.block
         figure('color','white');
         hold on
         plot(tmp,'.','markersize',30);
-%        plot(phit','k.','markersize',40);
+        %        plot(phit','k.','markersize',40);
         ylabel('pair hit-rate','fontsize',18);
         xlabel('subject number','fontsize',18);
         mycolors = get(gca,'ColorOrder');
@@ -215,7 +253,7 @@ for iblk = cfg.block
         set(gca,'fontsize',18);
         box off
         hold off
-
+        
         
         %resp bias
         figure('color','white');
@@ -251,7 +289,10 @@ for iblk = cfg.block
     results.cr = cr;
     results.fa = fa;
     results.dprime = dprime;
+    results.c = c;
+    results.beta = beta;
     results.pairhit = phit;
+    results.npairhit = nphit;
     
     bycond.hit = chit;
     bycond.fa = cfa;
@@ -260,6 +301,7 @@ for iblk = cfg.block
     bycond.miss = cmiss;
     bycond.cr = ccr;
     bycond.pairhit = cphit;
+    bycond.pairNtrials = cptrials;
     
     results.bycond = bycond;
     
