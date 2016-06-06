@@ -1,4 +1,4 @@
-function [outdata] = nk_ft_avgpowerbytime(freqdata,stat_clus,cfg_plot,cfg,dirs,files,savefigs)
+function [outdata] = nk_ft_avgpowerbytime(freqdata,stat_clus,cfg_plot,cfg,dirs,badSub,files,savefigs)
 
 % create a 2d power as a function of time plot for selected electrodes,
 % frequencies, and conditions
@@ -122,10 +122,11 @@ for cl = 1:length(plot_clus_str)
     
     cfg.sigt = sigt;
     
-    fprintf('%s: p=%f, t=%f to %f\n',vs_str,stat_clus.(vs_str).(sprintf('%sclusters',plot_clus_str{cl}))(cfg.clusnum).prob,cfg.sigt);
+    fprintf('%s: p=%f, t=%f to %f\n',vs_str,stat_clus.(vs_str).(sprintf('%sclusters',plot_clus_str{cl}))(cfg.clusnum).prob,min(cfg.sigt),max(cfg.sigt));
     
     %make condition average data matrix across subjects
     conddata = [];
+    conddata_var = [];
     for icond = 1:length(cfg.conds)
       inconds = fieldnames(freqdata);
       condidx = strcmp(inconds,cfg.conds{icond});
@@ -136,12 +137,27 @@ for cl = 1:length(plot_clus_str)
       end
       
       %average condition data across subjects
-      tempdata = [];
-      for isub = 1:length(freqdata.(cond).sub)
-        data = ft_selectdata(freqdata.(cond).sub(isub).data, 'foilim',cfg.freq,'avgoverfreq','yes');
-        data = ft_selectdata(data, 'channel', cfg.elecs,'avgoverchan','yes');
-        data = ft_selectdata(data, 'toilim',cfg.time,'avgovertime','no');
-        tempdata(:,isub) = squeeze(data.powspctrm);
+      tempdata = nan(length(sigt),sum(~badSub));
+      subcnt = 0;
+      for isub = find(~badSub)'
+          subcnt = subcnt + 1;
+          %if badSub(isub), continue; end
+          time = stat_clus.(vs_str).time;
+          data = freqdata.(cond).sub(isub).data;
+          indmat = zeros(size(data.powspctrm));
+          for itime = 1:length(sigt)
+              %get sig elecs for this time point
+              cfg.elecs = stat_clus.(vs_str).label(x(time(z)==sigt(itime)));
+              
+              fsel = data.freq>=cfg.freq(1) & data.freq<=cfg.freq(2);
+              tsel = data.time == sigt(itime);
+              csel = ismember(data.label,cfg.elecs);              
+              indmat(csel,fsel,tsel) = 1;
+              
+          end
+          data.powspctrm(~indmat) = nan;
+          mudata = squeeze(nanmean(nanmean(data.powspctrm,1),2));
+          tempdata(:,subcnt) = mudata(~isnan(mudata));          
       end
       conddata(:,icond) = nanmean(tempdata,2);
       conddata_var(:,icond) = nanste(tempdata,2)';
@@ -153,11 +169,11 @@ for cl = 1:length(plot_clus_str)
     outdata.time = data.time;
     outdata.var = conddata_var;
     
-    
+    outdata.time = sigt;
     figure('color','white');
     %plot(outdata.time,outdata.data,'linewidth',5);
     if ~isfield(cfg_plot,'colors')
-      colors = get(gca,'ColorOrd');
+      colors = get(gca,'ColorOrder');
     else
       colors = cfg_plot.colors;
     end
@@ -170,12 +186,12 @@ for cl = 1:length(plot_clus_str)
     
     set(gca,'fontsize',22);
     %xlim([-.5,max(data.time)]);
-    xlim(cfg.time);
+    if isfield(cfg,'time'),    xlim(cfg.time); end
     xlabel('Time (s)');
     ylabel('Power');
     %outdata.conds{3} = 'pB';outdata.conds{2} = 'T';
     legend(lh,regexprep(outdata.conds,'_',''),'location','best','fontsize',10);
-    title(sprintf('%s',['Cluster ' num2str(cfg.clusnum) ', AvgPwr' num2str(cfg.freq(1)) 'to' num2str(cfg.freq(end)) 'Hz']));
+    title(sprintf('%s',['Cluster ' num2str(cfg.clusnum) ', AvgPwr' num2str(cfg.freq(1),'%0.2f') 'to' num2str(cfg.freq(end),'%0.2f') 'Hz']));
     if isfield(cfg,'sigt')
       plot(repmat(min(cfg.sigt),2,1),ylim,'--k','linewidth',3);
       hold on
@@ -199,7 +215,8 @@ for cl = 1:length(plot_clus_str)
       p_str = strrep(sprintf('%.3f',p),'.','p');
       if length(sigf)==1 sigf = [sigf sigf]; end %fix for avg over freq
       cfg_plot.figfilename = sprintf('tfr_clus_avgfreq_%s_%d_%d_%s%d_%d_%d_%s',vs_str,round(sigf(1)),round(sigf(2)),plot_clus_str{cl},f,round(sigt(1)*1000),round(sigt(end)*1000),p_str);
-      
+      cfg_plot.latency = stat_clus.(vs_str).cfg.latency;
+      cfg_plot.frequency = stat_clus.(vs_str).cfg.frequency;
       dirs.saveDirFigsClus = fullfile(dirs.saveDirFigs,sprintf('tfr_stat_clus_%d_%d%s',round(cfg_plot.latency(1)*1000),round(cfg_plot.latency(2)*1000),cfg_plot.dirStr),vs_str);
       if ~exist(dirs.saveDirFigsClus,'dir')
         mkdir(dirs.saveDirFigsClus)

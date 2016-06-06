@@ -78,6 +78,10 @@ if ~isfield(cfg,'doplots')
     cfg.doplots = 0;
 end
 
+if ~isfield(cfg,'print')
+    cfg.print = 0;
+end
+
 %block indicies
 nblks = max(max(logdata.data.Block));
 indblk = logdata.data.Block(:,1) == 1;
@@ -171,7 +175,7 @@ for iblk = cfg.block
     nphit = sum(rold & iold & ~rpdknow);
     
     %dprime by cond
-    chit = cell(size(conds)); cmiss = chit; ccr = chit; cfa = chit; cdprime = chit; cphit = chit; cptrials = cphit;
+    chit = cell(size(conds)); cmiss = chit; ccr = chit; cfa = chit; cdprime = chit; cphit = chit; cptrials = cphit; cacc=chit;
     for icond = 1:length(conds)
         chit{icond} = sum(rold & iold & indConds{icond}) ./sum(iold & indConds{icond});
         chit{icond}(chit{icond}==1) = .99; %hack to avoid infinite dprime
@@ -179,6 +183,7 @@ for iblk = cfg.block
         ccr{icond} = sum(rnew & inew) ./sum(inew);
         cfa{icond} = sum(rold & inew) ./sum(inew);
         cfa{icond}(cfa{icond}==0) = 1/(2*sum(inew(:,1)));%hack to avoid infinte dprime
+        cacc{icond} = (chit{icond}+ccr{icond})./(chit{icond}+ccr{icond}+cfa{icond}+cmiss{icond});
         cdprime{icond} = norminv(chit{icond})-norminv(cfa{icond});
         %pair acc (norm based on responded 'old')
         cphit{icond} = sum(cpold & indConds{icond} & rold)./sum(rold & ~rpdknow & indConds{icond}); %discards 'don't know' trials
@@ -197,6 +202,7 @@ for iblk = cfg.block
     
     
     if cfg.doplots
+        crit = tinv(.975,size(dprime,2));
         %dprime across conditions
         figure('color','white');
         mycolors = get(gca,'ColorOrder');
@@ -204,13 +210,17 @@ for iblk = cfg.block
         hold on
         plot(dprime,'k.','markersize',30);
         %plot(0:length(dprime),repmat(mean(dprime),length(dprime)+1),'--k','linewidth',2);
-        shadedErrorBar(0:length(dprime)+1,repmat(mean(dprime),1,length(dprime)+2),repmat(ste(dprime'),1,length(dprime)+2),{'--k','linewidth',2},1);
-        shadedErrorBar(0:length(hit)+1,repmat(mean(hit),1,length(hit)+2),repmat(ste(hit'),1,length(hit)+2),{'--','linewidth',2,'color',mycolors(1,:),'markerfacecolor',mycolors(1,:)},1);
-        shadedErrorBar(0:length(fa)+1,repmat(mean(fa),1,length(fa)+2),repmat(ste(fa'),1,length(fa)+2),{'--','linewidth',2,'color',mycolors(2,:),'markerfacecolor',mycolors(2,:)},1);
-        xlabel('subject number','fontsize',18);
-        legend({'hit-rate','fa-rate','dprime'},'fontsize',18,'location','best');
-        set(gca,'fontsize',18);
+        shadedErrorBar(0:length(dprime)+1,repmat(mean(dprime),1,length(dprime)+2),repmat(ste(dprime').*crit,1,length(dprime)+2),{'--k','linewidth',2},1);
+        shadedErrorBar(0:length(hit)+1,repmat(mean(hit),1,length(hit)+2),repmat(ste(hit').*crit,1,length(hit)+2),{'--','linewidth',2,'color',mycolors(1,:),'markerfacecolor',mycolors(1,:)},1);
+        shadedErrorBar(0:length(fa)+1,repmat(mean(fa),1,length(fa)+2),repmat(ste(fa').*crit,1,length(fa)+2),{'--','linewidth',2,'color',mycolors(2,:),'markerfacecolor',mycolors(2,:)},1);
+        xlabel('subject number','fontsize',24);
+        ylabel('across condition performance','fontsize',24);
+        legend({'hit-rate','fa-rate','dprime'},'fontsize',24,'location','best');
+        set(gca,'fontsize',24);
         box off
+        if cfg.print
+            print('-r300','-dpng','~/Desktop/entBehavDprime.png');
+        end
         
         
         %dprime by condition, works with multiple conditions
@@ -218,17 +228,39 @@ for iblk = cfg.block
         hold on
         tmp = cell2mat(cdprime)';
         plot(tmp,'.','markersize',30);
-        ylabel('dprime','fontsize',18);
-        xlabel('subject number','fontsize',18);
+        ylabel('dprime','fontsize',24);
+        xlabel('subject number','fontsize',24);
         mycolors = get(gca,'ColorOrder');
         myconds = conds;
         for icond = 1:length(myconds)
-            shadedErrorBar(0:size(tmp,1)+1,repmat(mean(tmp(:,icond)),[1 size(tmp,1)+2]),repmat(ste(tmp(:,icond)),[1 size(tmp,1)+2]),{'--','linewidth',2,'color',mycolors(icond,:),'markerfacecolor',mycolors(1,:)},1);
+            shadedErrorBar(0:size(tmp,1)+1,repmat(mean(tmp(:,icond)),[1 size(tmp,1)+2]),repmat(crit.*ste(tmp(:,icond)),[1 size(tmp,1)+2]),{'--','linewidth',2,'color',mycolors(icond,:),'markerfacecolor',mycolors(1,:)},1);
         end
-        legend({num2str(myconds)},'fontsize',18,'location','best');
-        set(gca,'fontsize',18);
+        legend({num2str(myconds)},'fontsize',24,'location','best');
+        set(gca,'fontsize',24);
+        box off
+        hold off        
+
+        
+        %old/new acc by condition, works with multiple conditions
+        figure('color','white');
+        hold on
+        tmp = cell2mat(cacc)';
+        tmp = tmp(:,[2,3,4,1]);
+        plot(tmp,'.','markersize',30);
+        ylabel('old/new accuracy','fontsize',24);
+        xlabel('subject number','fontsize',24);
+        mycolors = get(gca,'ColorOrder');
+        myconds = conds;
+        for icond = 1:length(myconds)
+            shadedErrorBar(0:size(tmp,1)+1,repmat(mean(tmp(:,icond)),[1 size(tmp,1)+2]),repmat(crit.*ste(tmp(:,icond)),[1 size(tmp,1)+2]),{'--','linewidth',2,'color',mycolors(icond,:),'markerfacecolor',mycolors(1,:)},1);
+        end
+        legend({num2str(myconds([2,3,4,1]))},'fontsize',24,'location','best');
+        set(gca,'fontsize',24);
         box off
         hold off
+        if cfg.print
+            print('-r300','-dpng','~/Desktop/entBehavOldNewAcc.png');
+        end        
         
         
         %pair-hit across and within conditions
@@ -236,24 +268,27 @@ for iblk = cfg.block
         %pairhit = reshape(cell2mat(tmp),[size(tmp{1},2) size(tmp,1)]);
         %tmp = pairhit;
         tmp = cell2mat(cphit)';
+        tmp = tmp(:,[2,3,4,1]);
         figure('color','white');
         hold on
         plot(tmp,'.','markersize',30);
         %        plot(phit','k.','markersize',40);
-        ylabel('pair hit-rate','fontsize',18);
-        xlabel('subject number','fontsize',18);
+        ylabel('cued recall accuracy','fontsize',24);
+        xlabel('subject number','fontsize',24);
         mycolors = get(gca,'ColorOrder');
         %mycolors = cat(1,[0 0 0],mycolors);
         myconds = conds;
         %shadedErrorBar(0:size(phit',1)+1,repmat(mean(phit'),[1 size(phit',1)+2]),repmat(ste(phit'),[1 size(phit',1)+2]),{'--','linewidth',2,'color',[0 0 0],'markerfacecolor',[0 0 0]},1);
         for icond = 1:length(myconds)
-            shadedErrorBar(0:size(tmp,1)+1,repmat(mean(tmp(:,icond)),[1 size(tmp,1)+2]),repmat(ste(tmp(:,icond)),[1 size(tmp,1)+2]),{'--','linewidth',2,'color',mycolors(icond,:),'markerfacecolor',mycolors(1,:)},1);
+            shadedErrorBar(0:size(tmp,1)+1,repmat(mean(tmp(:,icond)),[1 size(tmp,1)+2]),repmat(crit.*ste(tmp(:,icond)),[1 size(tmp,1)+2]),{'--','linewidth',2,'color',mycolors(icond,:),'markerfacecolor',mycolors(1,:)},1);
         end
-        legend({num2str(myconds)},'fontsize',18,'location','best');
-        set(gca,'fontsize',18);
+        legend({num2str(myconds([2,3,4,1]))},'fontsize',24,'location','best');
+        set(gca,'fontsize',24);
         box off
         hold off
-        
+        if cfg.print
+            print('-r300','-dpng','~/Desktop/entBehavPAcc.png');
+        end        
         
         %resp bias
         figure('color','white');
@@ -269,10 +304,10 @@ for iblk = cfg.block
         shadedErrorBar(0:length(pctnew)+1,repmat(mean(pctnew),1,length(pctnew)+2),repmat(ste(pctnew'),1,length(pctnew)+2),{'--','linewidth',2,'color',mycolors(2,:),'markerfacecolor',mycolors(2,:)},1);
         shadedErrorBar(0:length(pctdknow)+1,repmat(mean(pctdknow),1,length(pctdknow)+2),repmat(ste(pctdknow'),1,length(pctdknow)+2),{'--','linewidth',2,'color',mycolors(3,:),'markerfacecolor',mycolors(3,:)},1);
         shadedErrorBar(0:length(pctpdknow)+1,repmat(mean(pctpdknow),1,length(pctpdknow)+2),repmat(ste(pctpdknow'),1,length(pctpdknow)+2),{'--','linewidth',2,'color',mycolors(4,:),'markerfacecolor',mycolors(4,:)},1);
-        ylabel('Response Percentage (phase3)','fontsize',18);
-        xlabel('Subject Number','fontsize',18);
-        legend({'old','new','Don''t Know','pair DK'},'fontsize',18);
-        set(gca,'fontsize',18);
+        ylabel('Response Percentage (phase3)','fontsize',24);
+        xlabel('Subject Number','fontsize',24);
+        legend({'old','new','Don''t Know','pair DK'},'fontsize',24);
+        set(gca,'fontsize',24);
         box off;
         
     end

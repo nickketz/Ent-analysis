@@ -21,11 +21,11 @@ cfg_ft.neighbors = ft_prepare_neighbours(struct('elecfile',files.elecfile,'metho
 %cfg_ft.minnbchan = 2;
 
 cfg_ana = [];
-cfg_ana.conditions = {'flckr20','flckr0'};
+cfg_ana.conditions = {'flckr6','flckr0'};
 
 %cfg_ana.frequencies = [3 8; 8 12; 12 30; 30 50];
 %cfg_ana.frequencies = [5.8 6.2; 9.8 10.2; 19.8 20.2];
-cfg_ana.frequencies = [19.8 20.2];
+cfg_ana.frequencies = [5.8 6.2];
 cfg_ana.latencies = [0 1];
 %cfg_ana.latencies = [0 0.5; 0.5 1.0];
 
@@ -34,7 +34,7 @@ for lat = 1:size(cfg_ana.latencies,1)
     for fr = 1:size(cfg_ana.frequencies,1)
         cfg_ft.frequency = cfg_ana.frequencies(fr,:);
         
-        %[stat_clus] = mm_ft_clusterstatTFR(cfg_ft,cfg_ana,exper,ana,dirs,data_pow);  
+        [stat_clus] = mm_ft_clusterstatTFR(cfg_ft,cfg_ana,exper,ana,dirs,data_pow);  
 %         mydir = fullfile(dirs.saveDirProc,['tfr_stat_clus_' num2str(cfg_ft.latency(1)*1000) '_' num2str(cfg_ft.latency(2)*1000)]);
 %         myfile = ['tfr_stat_clus_' cfg_ana.conditions{1} 'vs' cfg_ana.conditions{2} '_' sprintf('%.01f_%.01f',cfg_ft.frequency) '_' num2str(cfg_ft.latency(1)*1000) '_' num2str(cfg_ft.latency(2)*1000) '.mat'];
 %         load(fullfile(mydir,myfile));
@@ -49,7 +49,7 @@ cfg_plot.latency = cfg_ft.latency;
 %files.saveFigs = 0;
 
 %cfg_ft = [];
-%cfg_ft.alpha = .12;
+cfg_ft.alpha = .12;
 
 cfg_plot = [];
 cfg_plot.conditions = cfg_ana.conditions;

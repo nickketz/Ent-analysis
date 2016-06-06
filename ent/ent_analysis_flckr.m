@@ -18,7 +18,7 @@ badInd = sum(nTrials==0,2);
 %also remove sub20 for no behav data
 %badInd(strcmp(exper.subjects,'ENT_20')) = 1;
 
-exper = ent_rmSubs(exper,badInd);
+%exper = ent_rmSubs(exper,badInd);
 
 %%
 %define trials of interest
@@ -55,10 +55,11 @@ cfg.transform = '';
 % normalization of single or average trials
 % cfg.norm_trials = 'single'; % Grandchamp & Delorme (2011)
 cfg.norm_trials = 'single';
+%cfg.norm_trials = 'average';
 
 % baseline type
 % % 'zscore', 'absolute', 'relchange', 'relative', 'db'
- cfg.baseline_type = 'zscore';
+cfg.baseline_type = 'zscore';
 % cfg.baseline_type = 'db';
 % cfg.baseline_type = 'absolute';
 % cfg.baseline_type = 'relchange';
@@ -87,7 +88,7 @@ cfg.rmevokedpow = 'no';
 
 %% find bad performing subjects
 
-out = ent_behavior(dirs,exper);
+out = ent_behavior([],dirs,exper);
 exper.badSub = (out.results.dprime<.1)';
 ana = mm_ft_elecGroups(ana);
 
@@ -142,11 +143,11 @@ end
 
 %% plot power 
 cfg_ft = [];
-cfg_ft.xlim = [-1 2];
-%cfg_ft.ylim = [5.8 6.2];
+cfg_ft.xlim = [0 1];
+cfg_ft.ylim = [5.8 6.2];
 %cfg_ft.ylim = [9.8 10.2];
 %cfg_ft.ylim = [19.8 20.2];
-cfg_ft.ylim = [3 30];
+%cfg_ft.ylim = [3 30];
 %cfg_ft.ylim = [3 8];
 %cfg_ft.ylim = [8 12];
 %cfg_ft.ylim = [12 28];
@@ -160,27 +161,31 @@ cfg_ft.showlabels = 'yes';
 cfg_ft.colorbar = 'yes';
 cfg_ft.interactive = 'yes';
 cfg_ft.layout = ft_prepare_layout([],ana);
-cfg_ft.channel = ana.elecGroups{ismember(ana.elecGroupsStr,'PS2')};
+%cfg_ft.channel = ana.elecGroups{ismember(ana.elecGroupsStr,'PS2')};
 
 for ses = 1:length(ana.eventValues)
 
     for evVal = 1:length(ana.eventValues{ses})
       figure
-      ft_singleplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal})); 
-      hold on
-      entn = regexp(ana.eventValues{ses}{evVal},'([0-9]+)$','tokens');
-      entn = str2num(entn{1}{1});
-      if entn>0
-          plot(xlim,[entn entn],'--k','linewidth',2)
-      end
-      %ft_topoplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal}));              
-      %ft_multiplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal}));
+%       ft_singleplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal})); 
+%       hold on
+%       entn = regexp(ana.eventValues{ses}{evVal},'([0-9]+)$','tokens');
+%       entn = str2num(entn{1}{1});
+%       if entn>0
+%           plot(xlim,[entn entn],'--k','linewidth',2)
+%       end
+      ft_topoplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal})); 
+%       cfg_ft.showoutline = 'yes';
+%       ft_multiplotTFR(cfg_ft,ga_pow.(exper.sesStr{ses}).(ana.eventValues{ses}{evVal}));
       set(gcf,'Name',sprintf('%s',strrep(ana.eventValues{ses}{evVal},'_','-')))
     end
 
 end
 
 %% plot the contrasts
+
+files.saveFigs = true;
+files.figPrintFormat = 'pdf';
 
 
 cfg_plot = [];
@@ -200,7 +205,8 @@ cfg_ft.ylim = [19.8 20.2]; % freq
 %cfg_ft.ylim = [3 30]; % freq
 %cfg_ft.ylim = [28 50]; % freq
 cfg_ft.parameter = 'powspctrm';
-cfg_ft.zlim = [-.5 .5]; % pow
+cfg_ft.zlim = [-.2 .2]; % pow
+%%cfg_ft.zlim = 'maxmin'; % pow
 
 %cfg_ft.colorbar = 'no';
 cfg_ft.interactive = 'yes';
@@ -213,16 +219,16 @@ cfg_plot.zlabel = 'relchange power';
 
 %cfg_plot.ftFxn = 'ft_singleplotTFR';
 cfg_plot.ftFxn = 'ft_topoplotTFR';
-%cfg_ft.marker = 'on';
+cfg_ft.marker = 'off';
 cfg_ft.marker = 'labels';
 cfg_ft.markerfontsize = 9;
 cfg_ft.comment = 'no';
 %cfg_ft.xlim = [0.5 0.8]; % time
 cfg_plot.subplot = 0;
-cfg_ft.xlim = [0 1]; % time
-cfg_ft.avgovertime = 'no';
+cfg_ft.xlim = [0.2 1]; % time
+cfg_ft.avgovertime = 'yes';
 %cfg_ft.xlim = (0:0.05:1.0); % time
-cfg_plot.roi = {'PS2'};
+%cfg_plot.roi = {'PI'};
 
 
 % cfg_plot.ftFxn = 'ft_multiplotTFR';
@@ -278,7 +284,7 @@ cfg.linewidth = 2;
 % cfg.limitlinewidth = 0.5;
 % cfg.textFontSize = 10;
 
-cfg.yminmax = [-2 2];
+cfg.yminmax = [-1 1];
 %cfg.yminmax = [-0.6 0.6];
 %cfg.yminmax = [-0.5 0.2];
 cfg.nCol = 3;
@@ -322,10 +328,12 @@ for ifreq = 1:length(cfg_ana.frequency)
             bardata(isub,icond) = avgdata(isub).(conds{icond}).powspctrm;
         end
     end
-    figure('color','white');
+    %figure('color','white');
     hold on    
-    bar(mean(bardata));
-    plot(bardata','.','markersize',30);
+    crit = tinv(.975,size(bardata,1)-1);
+    errorbar_groups(mean(bardata),crit*ste(bardata));
+    hold on
+    plot(bardata','.k','markersize',30);
     box off
     set(gca,'Xtick',1:4);
     set(gca,'Xticklabel',conds);

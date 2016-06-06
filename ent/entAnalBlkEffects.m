@@ -1,4 +1,4 @@
-function entAnalBlkEffects(out,myvar)
+function [X,Y] = entAnalBlkEffects(out,myvar)
 
 nblks = 12;
 %myvar = 'hit';
@@ -18,7 +18,8 @@ for iblk = cfg.block
     sind = ((iblk-1) * nsubs)+1;
     eind = sind+nsubs-1;
     X(sind:eind,1) = iblk;
-    Y(sind:eind,1) = out(iblk).results.(myvar)';
+%    Y(sind:eind,1) = out(iblk).results.(myvar)';
+    eval(['Y(sind:eind,1) = out(iblk).results.' myvar]);
 end
 fprintf('across conditions test of %s block effects\n---------------',myvar);
 fitlm(X,Y)

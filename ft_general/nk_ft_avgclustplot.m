@@ -1,7 +1,7 @@
 function outdata = nk_ft_avgclustplot(stat_clus,cfg_plot,cfg_ft,dirs,files,savefigs)
 
-if ~isempty(savefigs)
-  files.saveFigs = 1;
+if exist('savefigs','var')
+    files.saveFigs = savefigs;
 end
 
 if ~isfield(cfg_ft,'alpha')
@@ -118,13 +118,14 @@ for cl = 1:length(plot_clus_str)
     lmat = zeros(size(tvals));
     lmat(elecnums) = 1;
     new_clus.(sprintf('%sclusterslabelmat',plot_clus_str{cl})) = lmat;
-    new_clus.(sprintf('%sclusters',plot_clus_str{cl})) = stat_clus.(vs_str).(sprintf('%sclusters',plot_clus_str{cl}));
+    new_clus.(sprintf('%sclusters',plot_clus_str{cl})) = stat_clus.(vs_str).(sprintf('%sclusters',plot_clus_str{cl}))(Nsig);
     cfg_ft.highlightcolorpos = [1 1 1];
     cfg_ft.highlightcolorneg = [1 1 1];
     %cfg_ft.highlightseries = {'numbers','numbers','numbers','numbers','numbers'};
+    cfg_ft.subplotsize = [1 1];
     ft_clusterplot(cfg_ft,new_clus);
     colorbar;
-    title([regexprep(vs_str,'_','') ', Cluster ' num2str(cfg_ft.clusnum) ', p=' sprintf('%.5f',stat_clus.(vs_str).(sprintf('%sclusters',plot_clus_str{cl}))(cfg_ft.clusnum).prob)],'fontsize',20);
+    title([regexprep(vs_str,'_','') ', Cluster ' num2str(cfg_ft.clusnum) ', p=' sprintf('%.2f',stat_clus.(vs_str).(sprintf('%sclusters',plot_clus_str{cl}))(cfg_ft.clusnum).prob)],'fontsize',20);
     outdata = tvals;
     
     if ~isfield(cfg_plot,'dirStr')
@@ -138,6 +139,8 @@ for cl = 1:length(plot_clus_str)
       f = cfg_ft.clusnum;
       p_str = strrep(sprintf('%.3f',p),'.','p');
       if cfg_plot.isfreq
+         cfg_plot.frequency =  stat_clus.(vs_str).cfg.frequency;
+         cfg_plot.latency = stat_clus.(vs_str).cfg.latency;
         cfg_plot.figfilename = sprintf('tfr_clus_avgclus_%s_%d_%d_%s%d_%d_%d_%s',vs_str,round(cfg_plot.frequency(1)),round(cfg_plot.frequency(2)),plot_clus_str{cl},f,round(cfg_plot.latency(1)*1000),round(cfg_plot.latency(2)*1000),p_str);
         dirs.saveDirFigsClus = fullfile(dirs.saveDirFigs,sprintf('tfr_stat_clus_%d_%d%s',round(cfg_plot.latency(1)*1000),round(cfg_plot.latency(2)*1000),cfg_plot.dirStr),vs_str);
       else
